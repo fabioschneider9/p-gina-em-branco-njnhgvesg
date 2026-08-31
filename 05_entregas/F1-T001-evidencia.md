@@ -3,7 +3,8 @@
 **Task:** F1-T001 — Registrar pré-condições da governança
 **SPEC:** SPEC-1-001 — Governança de responsáveis e acesso por escopo
 **Data:** 2026-08-31
-**Champion/aprovador:** Fábio Schneider
+**Champion/aprovador:** Fábio Schneider — CEO, líder do projeto e único responsável
+**Teste humano:** aprovado por Fábio em 2026-08-31 14:40
 
 ## Dados confirmados
 
@@ -13,13 +14,9 @@
 - Usuário com acesso: **Fábio** no momento.
 - Superfície técnica e runner: **ETHOS**.
 
-## Registro de governança
-
-Apenas o papel do responsável confirmado foi registrado: Fábio atua como administrador, líder do projeto e aprovador deste ciclo. Nenhum papel adicional foi inferido.
-
 ## Resultado
 
-F1-T001 está tecnicamente concluída porque identidade, responsável, superfície técnica e runner foram registrados. A pendência dos nomes das três unidades não impede a governança mínima; eles permanecem pendentes para eventual cadastro real.
+F1-T001 concluída. As pré-condições mínimas foram registradas e validadas pelo champion. A pendência dos nomes das três unidades não impede a governança mínima; eles permanecem pendentes para eventual cadastro real.
 
 ## Limites respeitados
 
@@ -27,3 +24,10 @@ F1-T001 está tecnicamente concluída porque identidade, responsável, superfíc
 - Nenhuma fixture ou política de RLS foi criada nesta task.
 - Nenhuma integração externa, pagamento ou fechamento foi executado.
 - F1-T002 não foi iniciada.
+
+## Verificação
+
+- **PASSOU:** identidade oficial mínima registrada como Qualivida.
+- **PASSOU:** responsável e papel confirmados: Fábio Schneider, administrador/champion/aprovador.
+- **PASSOU:** superfície e runner confirmados: ETHOS.
+- **PASSOU:** teste humano explícito realizado e aprovado por Fábio.
