@@ -145,6 +145,13 @@ export function canReadRecord(user: SyntheticUser, record: SyntheticRecord) {
   return authorizeRecordRead(user, record).granted
 }
 
+export function getScopeSummary(user: SyntheticUser) {
+  const scope = user.scopes[0]
+  return scope
+    ? `${scope.entityId} / ${scope.unitId} / ${scope.professionalId}`
+    : 'Nenhum escopo atribuído'
+}
+
 /**
  * RN-1-003 / CA-1-004: rejeita payload com conteúdo clínico (nome de paciente,
  * diagnóstico ou laudo) e NÃO persiste nada. Apenas campos administrativos passam.
