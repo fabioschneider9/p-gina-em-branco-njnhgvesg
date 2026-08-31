@@ -1,6 +1,23 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, ChevronRight, LockKeyhole, ShieldCheck, Users } from 'lucide-react'
-import { canReadRecord, getScopeSummary, rlsFixture, type SyntheticUser } from '@/lib/rls-fixture'
+import {
+  Ban,
+  CheckCircle2,
+  ChevronRight,
+  EyeOff,
+  LockKeyhole,
+  ShieldCheck,
+  TriangleAlert,
+  Users,
+} from 'lucide-react'
+import {
+  authorizeRecordRead,
+  denialScenarios,
+  getScopeSummary,
+  privacySamples,
+  rlsFixture,
+  validatePayload,
+  type SyntheticUser,
+} from '@/lib/rls-fixture'
 
 const Index = () => {
   const [selectedUserId, setSelectedUserId] = useState(rlsFixture.users[0].id)
@@ -8,7 +25,17 @@ const Index = () => {
     () => rlsFixture.users.find((user) => user.id === selectedUserId) ?? rlsFixture.users[0],
     [selectedUserId],
   )
-  const isAllowed = canReadRecord(selectedUser, rlsFixture.record)
+  const access = authorizeRecordRead(selectedUser, rlsFixture.record)
+  const isAllowed = access.granted
+
+  const clinicalValidation = useMemo(() => validatePayload(privacySamples.clinical), [])
+  const administrativeValidation = useMemo(() => validatePayload(privacySamples.administrative), [])
+
+  const denialResults = denialScenarios.map((scenario) => {
+    const user = rlsFixture.users.find((u) => u.id === scenario.userId)!
+    const result = authorizeRecordRead(user, rlsFixture.record)
+    return { scenario, result, pass: result.reason === scenario.expected.reason }
+  })
 
   return (
     <div className="min-h-screen overflow-auto bg-[#f6f8fb] text-slate-950">
@@ -113,11 +140,11 @@ const Index = () => {
               aria-live="polite"
             >
               <div className="flex items-start gap-3">
-                <CheckCircle2
-                  size={22}
-                  className={isAllowed ? 'text-emerald-600' : 'text-rose-600'}
-                  aria-hidden="true"
-                />
+                {isAllowed ? (
+                  <CheckCircle2 size={22} className="text-emerald-600" aria-hidden="true" />
+                ) : (
+                  <Ban size={22} className="text-rose-600" aria-hidden="true" />
+                )}
                 <div>
                   <p className={`font-bold ${isAllowed ? 'text-emerald-800' : 'text-rose-800'}`}>
                     {isAllowed ? 'Leitura permitida' : 'Leitura negada'}
@@ -125,7 +152,13 @@ const Index = () => {
                   <p className={`mt-1 text-sm ${isAllowed ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {isAllowed
                       ? 'As três dimensões do escopo coincidem com o registro-alvo.'
-                      : 'O usuário não cobre entidade, unidade e profissional do registro.'}
+                      : access.reason === 'NO_ENTITY'
+                        ? 'O usuário não cobre a entidade do registro.'
+                        : access.reason === 'NO_UNIT'
+                          ? 'O usuário não cobre a unidade do registro.'
+                          : access.reason === 'NO_PROFESSIONAL'
+                            ? 'O usuário não cobre o profissional do registro.'
+                            : 'O usuário não possui escopo atribuído.'}
                   </p>
                 </div>
               </div>
@@ -133,9 +166,104 @@ const Index = () => {
           </section>
         </div>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-rose-50 p-2 text-rose-600">
+              <Ban size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-rose-800">F1-T003 · Negações e privacidade</h3>
+              <p className="text-sm text-slate-500">
+                Usuários sem entidade, unidade ou profissional recebem negação sem vazar o payload.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Cenário</th>
+                  <th className="px-4 py-3">Usuário</th>
+                  <th className="px-4 py-3">Dimensão ausente</th>
+                  <th className="px-4 py-3">Resultado</th>
+                  <th className="px-4 py-3">Motivo (sem payload)</th>
+                  <th className="px-4 py-3">Confere</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {denialResults.map(({ scenario, result, pass }) => (
+                  <tr key={scenario.id}>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                      {scenario.id}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">{scenario.userId}</td>
+                    <td className="px-4 py-3 text-slate-700">{scenario.label}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
+                        <EyeOff size={13} aria-hidden="true" /> DENIED
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{result.reason}</td>
+                    <td className="px-4 py-3">
+                      {pass ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 size={14} aria-hidden="true" /> OK
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700">
+                          <TriangleAlert size={14} aria-hidden="true" /> FALHA
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Payload administrativo (permitido)
+              </p>
+              <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                {JSON.stringify(privacySamples.administrative, null, 2)}
+              </pre>
+              <p
+                className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+                role="status"
+                aria-live="polite"
+              >
+                <CheckCircle2 size={13} aria-hidden="true" />{' '}
+                {administrativeValidation.valid ? 'VALIDO — pode ser persistido' : 'REJEITADO'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-rose-600">
+                Payload clínico (rejeitado)
+              </p>
+              <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-rose-700">
+                {JSON.stringify(privacySamples.clinical, null, 2)}
+              </pre>
+              <p
+                className="mt-2 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700"
+                role="status"
+                aria-live="polite"
+              >
+                <EyeOff size={13} aria-hidden="true" /> REJEITADO — não persistido (
+                {clinicalValidation.valid
+                  ? 'erro inesperado'
+                  : clinicalValidation.detected.join(', ')}
+                )
+              </p>
+            </div>
+          </div>
+        </section>
+
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">
           <span>Versão da fixture: 1</span>
-          <span>Política: RN-1-001</span>
+          <span>Política: RN-1-001 · RN-1-003</span>
           <span className="text-slate-400">Sem dados reais ou conteúdo clínico</span>
         </footer>
       </main>
