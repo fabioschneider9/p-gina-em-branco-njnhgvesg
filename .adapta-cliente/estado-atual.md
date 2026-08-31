@@ -1,13 +1,13 @@
 # Estado atual — Adapta Cliente
 
-- task_id: F1-T003
+- task_id: F1-T004
 - champion: Fábio Schneider
 - spec: 04_fase-atual/specs/spec-1-001-governanca-responsaveis-rls.md
-- etapa: concluida
-- autorizacao_implementacao: confirmada — 2026-08-31 17:28 — "pode implementar a task F1-T0003"
-- teste_humano: aprovado — 2026-08-31 17:55 — "ok, validado"
-- verificacao_automatica: passou — Skip versão 0.0.9; setup, análise estática, build, integrações e testes aprovados; preview validado com os 3 cenários DENY e rejeição de payload clínico
-- aprendizado: sem_sinal: não houve padrão técnico reutilizável além dos critérios já definidos na SPEC
-- ultima_acao: F1-T003 concluída e registrada no GitHub e no projeto Skip Página em Branco
-- proxima_acao: Aguardar novo pedido para analisar F1-T004; não iniciar automaticamente
-- atualizado_em: 2026-08-31T17:56:00-03:00
+- etapa: aguardando_autorizacao
+- autorizacao_implementacao: ausente — análise da F1-T004 concluída; aguardando autorização específica
+- teste_humano: pendente
+- verificacao_automatica: pendente — nenhuma alteração de produto feita nesta análise
+- aprendizado: pendente
+- ultima_acao: F1-T004 selecionada e analisada; auditoria, versões e rollback não implementados
+- proxima_acao: Aguardar autorização para implementar
+- atualizado_em: 2026-08-31T18:00:00-03:00
