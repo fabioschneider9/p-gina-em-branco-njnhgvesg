@@ -7,7 +7,7 @@ export type Scope = {
 export type SyntheticUser = {
   id: string
   label: string
-  role: 'professional' | 'finance'
+  role: 'professional' | 'finance' | 'admin'
   scopes: Scope[]
 }
 
@@ -34,6 +34,32 @@ export type IncomingPayload = {
 export type PayloadValidation =
   | { valid: true; payload: IncomingPayload }
   | { valid: false; reason: 'CLINICAL_CONTENT'; detected: string[]; persisted: false }
+
+/** Versão imutável de uma política de escopo (antes/depois de cada alteração). */
+export type PolicyVersion = {
+  version: number
+  scopes: Scope[]
+  createdAt: string
+}
+
+/** Evento de auditoria (RN-1-004): append-only, nunca é removido pelo rollback. */
+export type AuditEvent = {
+  eventId: string
+  actorId: string
+  action: 'SCOPE_CHANGE' | 'SCOPE_ROLLBACK' | 'SCOPE_CHANGE_DENIED'
+  targetUserId: string
+  beforeVersion: number
+  afterVersion: number
+  result: 'ALLOWED' | 'DENIED'
+  occurredAt: string
+}
+
+/** Política versionada de um usuário, com trilha de auditoria. */
+export type ScopePolicy = {
+  userId: string
+  versions: PolicyVersion[]
+  audit: AuditEvent[]
+}
 
 export const rlsFixture = {
   entity: { id: 'ENTITY-TEST-001', label: 'Qualivida (entidade de teste)' },
@@ -99,6 +125,18 @@ export const rlsFixture = {
           entityId: 'ENTITY-TEST-001',
           unitId: 'UNIT-TEST-001',
           professionalId: 'PROF-TEST-999',
+        },
+      ],
+    },
+    {
+      id: 'ADMIN-USER-001',
+      label: 'Administrador autorizado',
+      role: 'admin' as const,
+      scopes: [
+        {
+          entityId: 'ENTITY-TEST-001',
+          unitId: 'UNIT-TEST-001',
+          professionalId: 'PROF-TEST-001',
         },
       ],
     },
@@ -213,4 +251,145 @@ export const privacySamples = {
     quantidade: 1,
     competência: '2026-08',
   },
+}
+
+/**
+ * Cria a política inicial (versão 1) de um usuário, com auditoria vazia.
+ * Usada para demonstrar versionamento e rollback sem tocar em dados reais.
+ */
+export function createScopePolicy(
+  userId: string,
+  scopes: Scope[],
+  now = new Date().toISOString(),
+): ScopePolicy {
+  return {
+    userId,
+    versions: [{ version: 1, scopes: [...scopes], createdAt: now }],
+    audit: [],
+  }
+}
+
+let eventSequence = 0
+
+function nextEventId(prefix: string) {
+  eventSequence += 1
+  return `${prefix}-${String(eventSequence).padStart(4, '0')}`
+}
+
+/**
+ * RN-1-002 / RN-1-004: somente administrador altera política de acesso.
+ * A alteração cria uma nova versão (before -> after) e um evento de auditoria.
+ * Nenhum payload clínico é aceito na fronteira.
+ */
+export function applyScopeChange(
+  policy: ScopePolicy,
+  actor: SyntheticUser,
+  newScopes: Scope[],
+  now = new Date().toISOString(),
+): { policy: ScopePolicy; event: AuditEvent; allowed: boolean } {
+  if (actor.role !== 'admin') {
+    const deniedEvent: AuditEvent = {
+      eventId: nextEventId('EVT'),
+      actorId: actor.id,
+      action: 'SCOPE_CHANGE_DENIED',
+      targetUserId: policy.userId,
+      beforeVersion: policy.versions[policy.versions.length - 1].version,
+      afterVersion: policy.versions[policy.versions.length - 1].version,
+      result: 'DENIED',
+      occurredAt: now,
+    }
+    return { policy, event: deniedEvent, allowed: false }
+  }
+  const current = policy.versions[policy.versions.length - 1]
+  const nextVersion = current.version + 1
+  const version: PolicyVersion = {
+    version: nextVersion,
+    scopes: [...newScopes],
+    createdAt: now,
+  }
+  const event: AuditEvent = {
+    eventId: nextEventId('EVT'),
+    actorId: actor.id,
+    action: 'SCOPE_CHANGE',
+    targetUserId: policy.userId,
+    beforeVersion: current.version,
+    afterVersion: nextVersion,
+    result: 'ALLOWED',
+    occurredAt: now,
+  }
+  return {
+    policy: {
+      userId: policy.userId,
+      versions: [...policy.versions, version],
+      audit: [...policy.audit, event],
+    },
+    event,
+    allowed: true,
+  }
+}
+
+/**
+ * RN-1-004: rollback restaura a versão anterior da política, mas a auditoria
+ * é append-only (nunca removida). Retorna a política restaurada e o evento novo.
+ */
+export function rollbackScopeChange(
+  policy: ScopePolicy,
+  actor: SyntheticUser,
+  toVersion: number,
+  now = new Date().toISOString(),
+): { policy: ScopePolicy; event: AuditEvent; allowed: boolean } {
+  if (actor.role !== 'admin') {
+    const deniedEvent: AuditEvent = {
+      eventId: nextEventId('EVT'),
+      actorId: actor.id,
+      action: 'SCOPE_CHANGE_DENIED',
+      targetUserId: policy.userId,
+      beforeVersion: policy.versions[policy.versions.length - 1].version,
+      afterVersion: policy.versions[policy.versions.length - 1].version,
+      result: 'DENIED',
+      occurredAt: now,
+    }
+    return { policy, event: deniedEvent, allowed: false }
+  }
+  const current = policy.versions[policy.versions.length - 1]
+  const target = policy.versions.find((v) => v.version === toVersion)
+  if (!target || target.version === current.version) {
+    // Rollback inválido: mesma versão ou inexistente — auditoria registra a negação, política intacta.
+    const deniedEvent: AuditEvent = {
+      eventId: nextEventId('EVT'),
+      actorId: actor.id,
+      action: 'SCOPE_CHANGE_DENIED',
+      targetUserId: policy.userId,
+      beforeVersion: current.version,
+      afterVersion: current.version,
+      result: 'DENIED',
+      occurredAt: now,
+    }
+    return { policy, event: deniedEvent, allowed: false }
+  }
+  const nextVersion = current.version + 1
+  const restored: PolicyVersion = {
+    version: nextVersion,
+    scopes: [...target.scopes],
+    createdAt: now,
+  }
+  const event: AuditEvent = {
+    eventId: nextEventId('EVT'),
+    actorId: actor.id,
+    action: 'SCOPE_ROLLBACK',
+    targetUserId: policy.userId,
+    beforeVersion: current.version,
+    afterVersion: nextVersion,
+    result: 'ALLOWED',
+    occurredAt: now,
+  }
+  return {
+    policy: {
+      userId: policy.userId,
+      versions: [...policy.versions, restored],
+      audit: [...policy.audit, event],
+    },
+    event,
+    allowed: true,
+  }
 }

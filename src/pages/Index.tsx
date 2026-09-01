@@ -1,21 +1,27 @@
 import { useMemo, useState } from 'react'
 import {
+  ArrowLeftRight,
   Ban,
   CheckCircle2,
   ChevronRight,
   EyeOff,
+  History,
   LockKeyhole,
   ShieldCheck,
   TriangleAlert,
   Users,
 } from 'lucide-react'
 import {
+  applyScopeChange,
   authorizeRecordRead,
+  createScopePolicy,
   denialScenarios,
   getScopeSummary,
   privacySamples,
   rlsFixture,
+  rollbackScopeChange,
   validatePayload,
+  type ScopePolicy,
   type SyntheticUser,
 } from '@/lib/rls-fixture'
 
@@ -27,6 +33,19 @@ const Index = () => {
   )
   const access = authorizeRecordRead(selectedUser, rlsFixture.record)
   const isAllowed = access.granted
+  const adminUser = useMemo<SyntheticUser>(
+    () => rlsFixture.users.find((u) => u.role === 'admin') ?? rlsFixture.users[0],
+    [],
+  )
+
+  // Estado da política (versionada + auditoria) para a demonstração de rollback.
+  const [policy, setPolicy] = useState<ScopePolicy>(() =>
+    createScopePolicy('PROF-USER-001', [
+      { entityId: 'ENTITY-TEST-001', unitId: 'UNIT-TEST-001', professionalId: 'PROF-TEST-001' },
+    ]),
+  )
+  const [auditTarget, setAuditTarget] = useState('PROF-USER-001')
+  const [feedback, setFeedback] = useState<string | null>(null)
 
   const clinicalValidation = useMemo(() => validatePayload(privacySamples.clinical), [])
   const administrativeValidation = useMemo(() => validatePayload(privacySamples.administrative), [])
@@ -36,6 +55,34 @@ const Index = () => {
     const result = authorizeRecordRead(user, rlsFixture.record)
     return { scenario, result, pass: result.reason === scenario.expected.reason }
   })
+
+  const currentVersion = policy.versions[policy.versions.length - 1]
+
+  const handleApplyChange = () => {
+    // Demonstração: concede acesso ao profissional para um novo escopo (sem dados clínicos).
+    const newScopes = [
+      ...currentVersion.scopes,
+      { entityId: 'ENTITY-TEST-001', unitId: 'UNIT-TEST-001', professionalId: 'PROF-TEST-002' },
+    ]
+    const result = applyScopeChange(policy, adminUser, newScopes)
+    setPolicy(result.policy)
+    setFeedback(
+      result.allowed
+        ? `Alteração aplicada: v${result.event.beforeVersion} → v${result.event.afterVersion} (evento ${result.event.eventId})`
+        : `Alteração negada por ${adminUser.id} (permissão insuficiente)`,
+    )
+  }
+
+  const handleRollback = () => {
+    const targetVersion = Math.max(1, currentVersion.version - 1)
+    const result = rollbackScopeChange(policy, adminUser, targetVersion)
+    setPolicy(result.policy)
+    setFeedback(
+      result.allowed
+        ? `Rollback para a versão ${targetVersion}: v${result.event.beforeVersion} → v${result.event.afterVersion} (evento ${result.event.eventId})`
+        : `Rollback negado (versão inválida ou permissão insuficiente)`,
+    )
+  }
 
   return (
     <div className="min-h-screen overflow-auto bg-[#f6f8fb] text-slate-950">
@@ -261,9 +308,129 @@ const Index = () => {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-slate-100 p-2 text-[#123b66]">
+              <History size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">F1-T004 · Auditoria e rollback</h3>
+              <p className="text-sm text-slate-500">
+                Alterações sensíveis geram versão e auditoria; rollback restaura a política anterior
+                sem apagar a auditoria.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Política atual (usuário {auditTarget})
+              </p>
+              <p className="break-words font-mono text-xs leading-5 text-slate-700">
+                {currentVersion.scopes
+                  .map((s) => `${s.entityId}/${s.unitId}/${s.professionalId}`)
+                  .join('\n') || 'Nenhum escopo'}
+              </p>
+              <p
+                className="mt-3 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+                role="status"
+                aria-live="polite"
+              >
+                <CheckCircle2 size={13} aria-hidden="true" /> Versão atual: v
+                {currentVersion.version}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Ações (administrador)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleApplyChange}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  <ArrowLeftRight size={15} aria-hidden="true" /> Aplicar alteração de escopo
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRollback}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  <History size={15} aria-hidden="true" /> Rollback (v{currentVersion.version} → v
+                  {Math.max(1, currentVersion.version - 1)})
+                </button>
+              </div>
+              {feedback && (
+                <p
+                  className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-slate-700"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {feedback}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Evento</th>
+                  <th className="px-4 py-3">Ação</th>
+                  <th className="px-4 py-3">Ator</th>
+                  <th className="px-4 py-3">Alvo</th>
+                  <th className="px-4 py-3">Versões (antes → depois)</th>
+                  <th className="px-4 py-3">Resultado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {policy.audit.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-sm text-slate-500" colSpan={6}>
+                      Nenhum evento de auditoria ainda. Use os botões acima.
+                    </td>
+                  </tr>
+                ) : (
+                  [...policy.audit].reverse().map((event) => (
+                    <tr key={event.eventId}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.eventId}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">{event.action}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.actorId}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.targetUserId}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        v{event.beforeVersion} → v{event.afterVersion}
+                      </td>
+                      <td className="px-4 py-3">
+                        {event.result === 'ALLOWED' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                            <CheckCircle2 size={13} aria-hidden="true" /> ALLOWED
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
+                            <Ban size={13} aria-hidden="true" /> DENIED
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">
           <span>Versão da fixture: 1</span>
-          <span>Política: RN-1-001 · RN-1-003</span>
+          <span>Política: RN-1-001 · RN-1-002 · RN-1-003 · RN-1-004</span>
           <span className="text-slate-400">Sem dados reais ou conteúdo clínico</span>
         </footer>
       </main>
