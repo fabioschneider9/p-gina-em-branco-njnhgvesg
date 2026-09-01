@@ -6,8 +6,8 @@
 - etapa: aguardando_teste_humano
 - autorizacao_implementacao: confirmada — mensagens de Fábio em 2026-09-01 13:42 "pode iniciar" e "pode segui com a task F1-T0004"
 - teste_humano: pendente
-- verificacao_automatica: pendente — alterações aplicadas; QA em execução
+- verificacao_automatica: passou — Skip versão 0.0.12; setup, análise estática, build, integrações e testes aprovados
 - aprendizado: pendente
-- ultima_acao: F1-T004 implementada — auditoria, versionamento e rollback adicionados; evidência criada
-- proxima_acao: rodar QA e apresentar teste humano
-- atualizado_em: 2026-09-01T13:48:00-03:00
+- ultima_acao: F1-T004 implementada e QA verde no Skip versão 0.0.12; evidência criada em 05_entregas/F1-T004-evidencia.md
+- proxima_acao: aguardar teste humano de Fábio no preview
+- atualizado_em: 2026-09-01T13:50:00-03:00
