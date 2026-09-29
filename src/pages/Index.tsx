@@ -24,6 +24,14 @@ import {
   type ScopePolicy,
   type SyntheticUser,
 } from '@/lib/rls-fixture'
+import {
+  availableServices,
+  catalogPayers,
+  catalogServices,
+  getPriceAt,
+  isServiceBlockedByMissingCode,
+  isServiceOffered,
+} from '@/lib/service-catalog'
 
 const Index = () => {
   const [selectedUserId, setSelectedUserId] = useState(rlsFixture.users[0].id)
@@ -428,9 +436,160 @@ const Index = () => {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-sky-50 p-2 text-sky-700">
+              <History size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">F1-T005 · Contrato de campos mínimos</h3>
+              <p className="text-sm text-slate-500">
+                Catálogo próprio por clínica — {catalogServices.length} serviços (
+                {catalogServices.filter((s) => s.tuss === null).length} sem código TUSS) e{' '}
+                {catalogPayers.length} pagadores. Valores da planilha são
+                informativos/desatualizados.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                RN-1-005 · Vinculação
+              </p>
+              <p className="mt-2 text-sm text-emerald-800">
+                Célula em branco = serviço <strong>não atendido</strong> para o pagador — não
+                aparece para marcação/agendamento. Só fica disponível com valor vinculado.
+              </p>
+            </div>
+            <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-sky-700">
+                RN-1-006 · Por clínica
+              </p>
+              <p className="mt-2 text-sm text-sky-800">
+                Cada clínica tem seu pacote de valores. Esta tabela: Clínica Qualivida Resende/RJ
+                (exemplo). Outras clínicas terão tabelas próprias.
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                RN-1-007 · Vigência
+              </p>
+              <p className="mt-2 text-sm text-amber-800">
+                Valor novo não muda o histórico lançado. Vigência imediata, futura programada ou
+                retroativa — sempre com autor, motivo e auditoria.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Serviço</th>
+                  <th className="px-4 py-3">TUSS</th>
+                  <th className="px-4 py-3">Particular (vigência)</th>
+                  <th className="px-4 py-3">Bradesco Emp</th>
+                  <th className="px-4 py-3">Mediservice</th>
+                  <th className="px-4 py-3">Disponível p/ agendar?</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {catalogServices.map((service) => {
+                  const offeredParticular = isServiceOffered(
+                    service.label,
+                    'P-PARTICULAR',
+                    'UNIT-TEST-001',
+                  )
+                  const priceParticular = getPriceAt(
+                    service.label,
+                    'P-PARTICULAR',
+                    'UNIT-TEST-001',
+                    '2026-12-31',
+                  )
+                  const offeredBradesco = isServiceOffered(
+                    service.label,
+                    'P-BRADESCO-EMP',
+                    'UNIT-TEST-001',
+                  )
+                  const offeredMedi = isServiceOffered(
+                    service.label,
+                    'P-MEDISERVICE',
+                    'UNIT-TEST-001',
+                  )
+                  const blockedCode = isServiceBlockedByMissingCode(service)
+                  return (
+                    <tr key={service.serviceId} className={blockedCode ? 'opacity-60' : ''}>
+                      <td className="px-4 py-3 font-semibold text-slate-800">
+                        {service.label}
+                        {blockedCode && (
+                          <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                            SEM TUSS — BLOQUEADO
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {service.tuss ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {offeredParticular && priceParticular ? (
+                          <>
+                            R$ {priceParticular.value.toFixed(2)}
+                            <span className="ml-1 text-xs text-slate-400">
+                              (vige {priceParticular.effectiveFrom})
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">sem vínculo</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {offeredBradesco ? (
+                          <span className="text-xs font-bold text-emerald-700">OFERECIDO</span>
+                        ) : (
+                          <span className="text-xs font-bold text-rose-600">NÃO ATENDIDO</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {offeredMedi ? (
+                          <span className="text-xs font-bold text-emerald-700">OFERECIDO</span>
+                        ) : (
+                          <span className="text-xs font-bold text-rose-600">NÃO ATENDIDO</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {blockedCode ? (
+                          <span className="text-xs font-bold text-amber-600">
+                            BLOQUEADO (sem código)
+                          </span>
+                        ) : offeredParticular || offeredBradesco || offeredMedi ? (
+                          <span className="text-xs font-bold text-emerald-700">
+                            SIM (com vínculo)
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-rose-600">NÃO</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-3 text-xs text-slate-500">
+            Demonstração RN-1-007 na linha do tempo: ECG/INB tem vigência{' '}
+            <strong>retroativa</strong> (R$ 21,30 → R$ 24,50 em 2026-06-01, registrada em julho);
+            Consulta/Particular tem vigência <strong>futura</strong> (R$ 150 → R$ 200 em
+            2027-01-01). Registros anteriores a essas datas mantêm o valor da época.
+          </p>
+        </section>
+
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">
           <span>Versão da fixture: 1</span>
-          <span>Política: RN-1-001 · RN-1-002 · RN-1-003 · RN-1-004</span>
+          <span>
+            Política: RN-1-001 · RN-1-002 · RN-1-003 · RN-1-004 · RN-1-005 · RN-1-006 · RN-1-007
+          </span>
           <span className="text-slate-400">Sem dados reais ou conteúdo clínico</span>
         </footer>
       </main>

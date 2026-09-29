@@ -4,19 +4,23 @@
 **SPEC:** SPEC-1-002 — Registro operacional de prontuário/produção
 **Data:** 2026-09-01
 **Champion/aprovador:** Fábio Schneider — CEO, líder do projeto e único responsável
-**Status:** decisões coletadas e contrato fechado; aguardando autorização para implementar a fixture (F1-T006 usa este contrato)
+**Teste humano:** pendente
 
-## Decisões do champion (2026-09-01, 17:45 e 19:59)
+## Critério binário
 
-| #   | Decisão                              | Resposta de Fábio                                                                                                                                                                                                                                                               | Estado        |
-| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | Serviço (`service_ref`)              | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 2026-09-01 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede (ex.: Bradesco Nacional/Efetivo) e valores especiais (desconto, combo) reservados no modelo          | ✅ registrada |
-| 2   | Identidade oficial                   | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                                                                                 | ✅ registrada |
-| 3   | Retenção                             | **Para sempre**; correção somente por nova versão                                                                                                                                                                                                                               | ✅ registrada |
-| 4   | Superfície autorizada                | **Skip + GitHub + ETHOS**                                                                                                                                                                                                                                                       | ✅ registrada |
-| 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** para aquele pagador → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços (RN-1-005)                                                                                                                              | ✅ registrada |
-| 6   | Escopo do catálogo                   | **Por clínica/unidade** — esta tabela é da Clínica Qualivida Resende/RJ (exemplo); outras clínicas terão tabelas próprias                                                                                                                                                       | ✅ registrada |
-| 7   | Alteração de valores                 | **Histórico lançado não muda**; novo valor recebe **data de vigência** — imediata, futura (programada p/ convênios) ou **retroativa** (descoberta em demonstrativo de mês anterior); aplicação a registros já lançados só por nova versão com autor/motivo/auditoria (RN-1-007) | ✅ registrada |
+Campos mínimos, identidade oficial, fronteira clínico/administrativo e retenção registrados.
+
+## Decisões do champion (2026-09-01, 17:45 → 20:11)
+
+| #   | Decisão                              | Resposta de Fábio                                                                                                                                                                                                | Estado |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | Serviço (`service_ref`)              | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede e valores especiais (desconto, combo) reservados | ✅     |
+| 2   | Identidade oficial                   | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                  | ✅     |
+| 3   | Retenção                             | **Para sempre**; correção somente por nova versão                                                                                                                                                                | ✅     |
+| 4   | Superfície autorizada                | **Skip + GitHub + ETHOS**                                                                                                                                                                                        | ✅     |
+| 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços                                                                                              | ✅     |
+| 6   | Escopo do catálogo                   | **Por clínica/unidade** — tabela atual = Clínica Qualivida Resende/RJ (exemplo para avançar)                                                                                                                     | ✅     |
+| 7   | Alteração de valores                 | **Histórico lançado não muda**; novo valor com **data de vigência** — imediata, futura programada (convênios) ou retroativa (demonstrativo de mês anterior)                                                      | ✅     |
 
 ## Contrato registrado (F1-FIELDS-BASELINE)
 
@@ -27,42 +31,36 @@
 
 ### Catálogo de serviços (`service_ref`)
 
-- Fonte oficial: planilha de valores Qualivida (2026-09-01). Os **valores estão desatualizados e não são usados** — a planilha serve de catálogo de serviços/pagadores, não de tabela de preços vigente.
-- **Catálogo é por clínica/unidade**: esta tabela é da **Clínica Qualivida de Resende/RJ** (exemplo para avançar); outras clínicas terão tabelas próprias.
-- **RN-1-005 (nova):** célula em branco na tabela de preços = serviço **não atendido** para aquele pagador → não disponível para marcação/agendamento; só fica disponível quando houver **vinculação na tabela de preços** (célula com valor).
-- Identificador técnico: **código TUSS** quando disponível; serviço sem código fica `BLOQUEADO` até receber código.
-- **27 serviços distintos** identificados — 23 com código TUSS, 4 sem código:
-  - Com código: Consulta (10101012), ECG (40101010), ECO (40901106), ECO-Stress (40901076), Carótidas (40901360), TE (40101037), MAPA (20102038), Holter (20102020), EEG rotina (40103170), EEG Quantitativo (40103196), EEG Sono/Vigilia (40103234), EEG Prolongado (40103200), EEG Fotoestímulo (40103218), VEEG (40103757), PSG noite inteira (40103528), PSG com EEG (40103536), PSG com CPAP (40103544), Doppler Transcraniano (40901602), US Globo Ocular (40901025), Infiltração de ponto gatinho (20103301), Bloqueio anestésico de nervo (31602118), US vascular c/ contraste (40901823), Bloqueio fenólico/alcoólico (20103140).
-  - Sem código (ficam `BLOQUEADO` até receber código): Holter-EEG 12hs, Holter-EEG 24hs, VEEG prol 1 hora, VEEG prol 2 hora.
-
-### Pagadores (fontes pagadoras)
-
-- **21 pagadores** distintos nas 4 abas: Bradesco (Emp/Ind), Mediservice, Sulamérica, GEAP, INB, Particular, Particular VR/BM, Salvus, Salutem, Saúde CAIXA, UNIMED, Golden Cross, Fusex, CASSI, Postal Saúde, Real Grandeza, Plamer, Amil, Abertta, Liv.
-- Cada clínica/unidade tem **pacote próprio**; **subtipos de rede** (ex.: Bradesco Nacional × Efetivo) admitem valores diferentes; **valores especiais** (desconto solicitado por paciente, combo de serviços) têm espaço reservado no modelo.
+- **27 serviços** (23 com código TUSS; 4 sem código → `BLOQUEADO` até receber código: Holter-EEG 12hs, Holter-EEG 24hs, VEEG prol 1 hora, VEEG prol 2 hora).
+- **21 pagadores**: Bradesco (Emp/Ind), Mediservice, Sulamérica, GEAP, INB, Particular, Particular VR/BM, Salvus, Salutem, Saúde CAIXA, UNIMED, Golden Cross, Fusex, CASSI, Postal Saúde, Real Grandeza, Plamer, Amil, Abertta, Liv.
+- Valores da planilha: **desatualizados/informativos** — não são tabela vigente; a vinculação (existência de valor) é que habilita o serviço.
+- **RN-1-005:** sem vínculo → não atendido, fora da marcação/agendamento.
+- **RN-1-006:** catálogo por clínica (Resende/RJ é o pacote de exemplo).
+- **RN-1-007:** linha do tempo de valores com vigência imediata/futura/retroativa; histórico lançado preservado.
 
 ### Fronteira clínico/administrativo e estados
 
-- Proibido no MVP: nome de paciente, diagnóstico, laudo, prescrição, presença (já fechado na SPEC).
-- Estados: `RASCUNHO` / `VALIDO` / `BLOQUEADO`; status de origem preservado (`AGENDADO`, `ATENDIDO`, `CANCELADO`, `FALTOU`); valores condicionais nulos explícitos, nunca zero silencioso.
+- Proibido no MVP: nome de paciente, diagnóstico, laudo, prescrição, presença.
+- Estados: `RASCUNHO` / `VALIDO` / `BLOQUEADO`; status de origem preservado; valores condicionais nulos explícitos, nunca zero silencioso.
 
-### Regras do catálogo (novas, do champion em 2026-09-01 20:06)
+## Implementação entregue (após autorização de 20:42)
 
-- **RN-1-005 — vinculação obrigatória:** célula em branco na tabela (serviço × pagador) significa serviço **não atendido** para aquele pagador; só fica disponível para marcação/agendamento quando existir valor vinculado na tabela de preços daquela clínica.
-- **RN-1-006 — catálogo por clínica:** cada clínica/unidade tem seu próprio pacote de valores; a tabela atual referencia a Clínica Qualivida de Resende/RJ e serve de exemplo para o contrato.
-- **RN-1-007 — vigência de valores:** alterar um valor **não muda o que já foi lançado historicamente**. Todo novo valor recebe **data de vigência**:
-  - **imediata** (ex.: consulta particular — decide e vale na hora);
-  - **futura programada** (convênios avisam com antecedência — o novo valor entra na data combinada);
-  - **retroativa** (ao receber demonstrativo de mês anterior descobre-se que o valor mudou — permitido, com autor/motivo/auditoria).
-  - Registros já lançados permanecem com o valor da época; correção só por nova versão (alinhado a CA-1-009 e retenção permanente).
-
-## Pendências de qualidade do arquivo-fonte (não bloqueiam o contrato; tratam-se na fixture)
-
-- 4 serviços sem código TUSS — ficam `BLOQUEADO` até receber código.
-- Células com "NÃO", "-" e 0 (ex.: ECO-Stress/Salvus = 0) — zero real, não conversão silenciosa.
-- Abas duplicadas/derivadas (Planilha1 duplicada, ECO-stress com média, Planilha3 com PROPOSTA/Média) — o catálogo consolidado resolve.
+| Artefato                           | Conteúdo                                                                                                                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/service-catalog.ts`       | Catálogo estruturado: 27 serviços, 21 pagadores, pacote Resende/RJ com linha do tempo de valores; `isServiceOffered` (RN-1-005), `getPriceAt` (RN-1-007), `availableServices`, `isServiceBlockedByMissingCode` |
+| `src/pages/Index.tsx`              | Seção "F1-T005 · Contrato de campos mínimos": regras RN-1-005/006/007 + matriz serviço × pagador com disponibilidade e vigências demonstradas (ECG/INB retroativa; Consulta/Particular futura)                 |
+| `05_entregas/F1-T005-evidencia.md` | Este documento                                                                                                                                                                                                 |
 
 ## Verificação
 
-- **PASSOU:** decisões 1–4 do champion registradas com fonte e data.
-- **PENDENTE:** autorização para implementar a fixture da F1-T006 (usa este contrato).
-- Nenhum dado real de paciente foi tocado — somente catálogo de serviços e pagadores.
+- **PASSOU:** campos mínimos registrados (contrato + catálogo estruturado).
+- **PASSOU:** identidade oficial registrada (`guide_number` + `record_id`).
+- **PASSOU:** fronteira clínico/administrativo registrada (proibições do MVP).
+- **PASSOU:** retenção registrada (para sempre; correção por nova versão).
+- **PENDENTE:** teste humano de Fábio.
+
+## Limites respeitados
+
+- Nenhum dado real de paciente; somente catálogo de serviços/pagadores.
+- Valores da planilha não usados como tabela vigente.
+- `.skip.config.json` pré-existente não foi tocado.
