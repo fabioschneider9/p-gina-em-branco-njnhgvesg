@@ -8,12 +8,14 @@
 
 ## Decisões do champion (2026-09-01, 17:45 e 19:59)
 
-| #   | Decisão                 | Resposta de Fábio                                                                                                                                                                                                                                                      | Estado        |
-| --- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | Serviço (`service_ref`) | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 2026-09-01 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede (ex.: Bradesco Nacional/Efetivo) e valores especiais (desconto, combo) reservados no modelo | ✅ registrada |
-| 2   | Identidade oficial      | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                                                                        | ✅ registrada |
-| 3   | Retenção                | **Para sempre**; correção somente por nova versão                                                                                                                                                                                                                      | ✅ registrada |
-| 4   | Superfície autorizada   | **Skip + GitHub + ETHOS**                                                                                                                                                                                                                                              | ✅ registrada |
+| #   | Decisão                              | Resposta de Fábio                                                                                                                                                                                                                                                      | Estado        |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | Serviço (`service_ref`)              | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 2026-09-01 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede (ex.: Bradesco Nacional/Efetivo) e valores especiais (desconto, combo) reservados no modelo | ✅ registrada |
+| 2   | Identidade oficial                   | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                                                                        | ✅ registrada |
+| 3   | Retenção                             | **Para sempre**; correção somente por nova versão                                                                                                                                                                                                                      | ✅ registrada |
+| 4   | Superfície autorizada                | **Skip + GitHub + ETHOS**                                                                                                                                                                                                                                              | ✅ registrada |
+| 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** para aquele pagador → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços (RN-1-005)                                                                                                                     | ✅ registrada |
+| 6   | Escopo do catálogo                   | **Por clínica/unidade** — esta tabela é da Clínica Qualivida Resende/RJ (exemplo); outras clínicas terão tabelas próprias                                                                                                                                              | ✅ registrada |
 
 ## Contrato registrado (F1-FIELDS-BASELINE)
 
@@ -25,6 +27,8 @@
 ### Catálogo de serviços (`service_ref`)
 
 - Fonte oficial: planilha de valores Qualivida (2026-09-01). Os **valores estão desatualizados e não são usados** — a planilha serve de catálogo de serviços/pagadores, não de tabela de preços vigente.
+- **Catálogo é por clínica/unidade**: esta tabela é da **Clínica Qualivida de Resende/RJ** (exemplo para avançar); outras clínicas terão tabelas próprias.
+- **RN-1-005 (nova):** célula em branco na tabela de preços = serviço **não atendido** para aquele pagador → não disponível para marcação/agendamento; só fica disponível quando houver **vinculação na tabela de preços** (célula com valor).
 - Identificador técnico: **código TUSS** quando disponível; serviço sem código fica `BLOQUEADO` até receber código.
 - **27 serviços distintos** identificados — 23 com código TUSS, 4 sem código:
   - Com código: Consulta (10101012), ECG (40101010), ECO (40901106), ECO-Stress (40901076), Carótidas (40901360), TE (40101037), MAPA (20102038), Holter (20102020), EEG rotina (40103170), EEG Quantitativo (40103196), EEG Sono/Vigilia (40103234), EEG Prolongado (40103200), EEG Fotoestímulo (40103218), VEEG (40103757), PSG noite inteira (40103528), PSG com EEG (40103536), PSG com CPAP (40103544), Doppler Transcraniano (40901602), US Globo Ocular (40901025), Infiltração de ponto gatinho (20103301), Bloqueio anestésico de nervo (31602118), US vascular c/ contraste (40901823), Bloqueio fenólico/alcoólico (20103140).
@@ -39,6 +43,11 @@
 
 - Proibido no MVP: nome de paciente, diagnóstico, laudo, prescrição, presença (já fechado na SPEC).
 - Estados: `RASCUNHO` / `VALIDO` / `BLOQUEADO`; status de origem preservado (`AGENDADO`, `ATENDIDO`, `CANCELADO`, `FALTOU`); valores condicionais nulos explícitos, nunca zero silencioso.
+
+### Regras do catálogo (novas, do champion em 2026-09-01 20:06)
+
+- **RN-1-005 — vinculação obrigatória:** célula em branco na tabela (serviço × pagador) significa serviço **não atendido** para aquele pagador; só fica disponível para marcação/agendamento quando existir valor vinculado na tabela de preços daquela clínica.
+- **RN-1-006 — catálogo por clínica:** cada clínica/unidade tem seu próprio pacote de valores; a tabela atual referencia a Clínica Qualivida de Resende/RJ e serve de exemplo para o contrato.
 
 ## Pendências de qualidade do arquivo-fonte (não bloqueiam o contrato; tratam-se na fixture)
 
