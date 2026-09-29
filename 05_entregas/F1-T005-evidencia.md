@@ -8,14 +8,15 @@
 
 ## Decisões do champion (2026-09-01, 17:45 e 19:59)
 
-| #   | Decisão                              | Resposta de Fábio                                                                                                                                                                                                                                                      | Estado        |
-| --- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | Serviço (`service_ref`)              | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 2026-09-01 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede (ex.: Bradesco Nacional/Efetivo) e valores especiais (desconto, combo) reservados no modelo | ✅ registrada |
-| 2   | Identidade oficial                   | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                                                                        | ✅ registrada |
-| 3   | Retenção                             | **Para sempre**; correção somente por nova versão                                                                                                                                                                                                                      | ✅ registrada |
-| 4   | Superfície autorizada                | **Skip + GitHub + ETHOS**                                                                                                                                                                                                                                              | ✅ registrada |
-| 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** para aquele pagador → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços (RN-1-005)                                                                                                                     | ✅ registrada |
-| 6   | Escopo do catálogo                   | **Por clínica/unidade** — esta tabela é da Clínica Qualivida Resende/RJ (exemplo); outras clínicas terão tabelas próprias                                                                                                                                              | ✅ registrada |
+| #   | Decisão                              | Resposta de Fábio                                                                                                                                                                                                                                                               | Estado        |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | Serviço (`service_ref`)              | **Catálogo próprio**, fonte: planilha `Valores_Qualivida.xlsx` (enviada 2026-09-01 19:59); códigos TUSS como identificador técnico; pagadores por coluna; subtipos de rede (ex.: Bradesco Nacional/Efetivo) e valores especiais (desconto, combo) reservados no modelo          | ✅ registrada |
+| 2   | Identidade oficial                   | **Nº de guia individual + `record_id` técnico**                                                                                                                                                                                                                                 | ✅ registrada |
+| 3   | Retenção                             | **Para sempre**; correção somente por nova versão                                                                                                                                                                                                                               | ✅ registrada |
+| 4   | Superfície autorizada                | **Skip + GitHub + ETHOS**                                                                                                                                                                                                                                                       | ✅ registrada |
+| 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** para aquele pagador → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços (RN-1-005)                                                                                                                              | ✅ registrada |
+| 6   | Escopo do catálogo                   | **Por clínica/unidade** — esta tabela é da Clínica Qualivida Resende/RJ (exemplo); outras clínicas terão tabelas próprias                                                                                                                                                       | ✅ registrada |
+| 7   | Alteração de valores                 | **Histórico lançado não muda**; novo valor recebe **data de vigência** — imediata, futura (programada p/ convênios) ou **retroativa** (descoberta em demonstrativo de mês anterior); aplicação a registros já lançados só por nova versão com autor/motivo/auditoria (RN-1-007) | ✅ registrada |
 
 ## Contrato registrado (F1-FIELDS-BASELINE)
 
@@ -48,6 +49,11 @@
 
 - **RN-1-005 — vinculação obrigatória:** célula em branco na tabela (serviço × pagador) significa serviço **não atendido** para aquele pagador; só fica disponível para marcação/agendamento quando existir valor vinculado na tabela de preços daquela clínica.
 - **RN-1-006 — catálogo por clínica:** cada clínica/unidade tem seu próprio pacote de valores; a tabela atual referencia a Clínica Qualivida de Resende/RJ e serve de exemplo para o contrato.
+- **RN-1-007 — vigência de valores:** alterar um valor **não muda o que já foi lançado historicamente**. Todo novo valor recebe **data de vigência**:
+  - **imediata** (ex.: consulta particular — decide e vale na hora);
+  - **futura programada** (convênios avisam com antecedência — o novo valor entra na data combinada);
+  - **retroativa** (ao receber demonstrativo de mês anterior descobre-se que o valor mudou — permitido, com autor/motivo/auditoria).
+  - Registros já lançados permanecem com o valor da época; correção só por nova versão (alinhado a CA-1-009 e retenção permanente).
 
 ## Pendências de qualidade do arquivo-fonte (não bloqueiam o contrato; tratam-se na fixture)
 
