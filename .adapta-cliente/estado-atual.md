@@ -6,8 +6,8 @@
 - etapa: aguardando_teste_humano
 - autorizacao_implementacao: confirmada — mensagem de Fábio em 2026-09-01 20:42 "pode implementar"
 - teste_humano: pendente
-- verificacao_automatica: pendente — catálogo e tela implementados; QA em execução
+- verificacao_automatica: passou — Skip versão 0.0.20; setup, análise estática, build, integrações e testes aprovados
 - aprendizado: pendente
-- ultima_acao: F1-T005 implementada — catálogo estruturado (27 serviços, 21 pagadores, RN-1-005/006/007) e tela do contrato
-- proxima_acao: rodar QA e apresentar teste humano
-- atualizado_em: 2026-09-01T20:50:00-03:00
+- ultima_acao: F1-T005 implementada e QA verde no Skip v0.0.20; contrato sincronizado ao GitHub
+- proxima_acao: aguardar teste humano de Fábio no preview
+- atualizado_em: 2026-09-01T20:55:00-03:00
