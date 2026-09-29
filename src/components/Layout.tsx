@@ -6,7 +6,7 @@ import { Outlet } from 'react-router-dom'
 
 export default function Layout() {
   return (
-    <main className="w-full h-full min-h-screen bg-[#FFFFFF] m-0 p-0 overflow-hidden">
+    <main className="w-full h-full min-h-screen bg-[#FFFFFF] m-0 p-0 overflow-y-auto">
       <Outlet />
     </main>
   )
