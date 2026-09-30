@@ -29,7 +29,6 @@ import {
   catalogPayers,
   catalogServices,
   getPriceAt,
-  isServiceBlockedByMissingCode,
   isServiceOffered,
 } from '@/lib/service-catalog'
 
@@ -517,14 +516,13 @@ const Index = () => {
                     'P-MEDISERVICE',
                     'UNIT-TEST-001',
                   )
-                  const blockedCode = isServiceBlockedByMissingCode(service)
                   return (
-                    <tr key={service.serviceId} className={blockedCode ? 'opacity-60' : ''}>
+                    <tr key={service.serviceId}>
                       <td className="px-4 py-3 font-semibold text-slate-800">
                         {service.label}
-                        {blockedCode && (
-                          <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                            SEM TUSS — BLOQUEADO
+                        {!service.tuss && (
+                          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                            sem código (opcional)
                           </span>
                         )}
                       </td>
@@ -558,16 +556,12 @@ const Index = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {blockedCode ? (
-                          <span className="text-xs font-bold text-amber-600">
-                            BLOQUEADO (sem código)
-                          </span>
-                        ) : offeredParticular || offeredBradesco || offeredMedi ? (
+                        {offeredParticular || offeredBradesco || offeredMedi ? (
                           <span className="text-xs font-bold text-emerald-700">
                             SIM (com vínculo)
                           </span>
                         ) : (
-                          <span className="text-xs font-bold text-rose-600">NÃO</span>
+                          <span className="text-xs font-bold text-rose-600">NÃO (sem vínculo)</span>
                         )}
                       </td>
                     </tr>

@@ -21,6 +21,7 @@ Campos mínimos, identidade oficial, fronteira clínico/administrativo e retenç
 | 5   | Célula em branco (serviço × pagador) | **Serviço não atendido** → indisponível para marcação/agendamento; disponível só com vinculação na tabela de preços                                                                                              | ✅     |
 | 6   | Escopo do catálogo                   | **Por clínica/unidade** — tabela atual = Clínica Qualivida Resende/RJ (exemplo para avançar)                                                                                                                     | ✅     |
 | 7   | Alteração de valores                 | **Histórico lançado não muda**; novo valor com **data de vigência** — imediata, futura programada (convênios) ou retroativa (demonstrativo de mês anterior)                                                      | ✅     |
+| 8   | Código do serviço (correção 21:02)   | **Código TUSS não é obrigatório** — serviço pode não ter código ou ter código de **pacote contratualizado** com a operadora; o que define existência/agendabilidade é a **vinculação de valor** (RN-1-005)       | ✅     |
 
 ## Contrato registrado (F1-FIELDS-BASELINE)
 
@@ -31,7 +32,7 @@ Campos mínimos, identidade oficial, fronteira clínico/administrativo e retenç
 
 ### Catálogo de serviços (`service_ref`)
 
-- **27 serviços** (23 com código TUSS; 4 sem código → `BLOQUEADO` até receber código: Holter-EEG 12hs, Holter-EEG 24hs, VEEG prol 1 hora, VEEG prol 2 hora).
+- **27 serviços** — código TUSS **opcional** (decisão 8): pode não haver código ou ser código de pacote contratualizado com a operadora. Serviço existe e é agendável quando tem valor vinculado.
 - **21 pagadores**: Bradesco (Emp/Ind), Mediservice, Sulamérica, GEAP, INB, Particular, Particular VR/BM, Salvus, Salutem, Saúde CAIXA, UNIMED, Golden Cross, Fusex, CASSI, Postal Saúde, Real Grandeza, Plamer, Amil, Abertta, Liv.
 - Valores da planilha: **desatualizados/informativos** — não são tabela vigente; a vinculação (existência de valor) é que habilita o serviço.
 - **RN-1-005:** sem vínculo → não atendido, fora da marcação/agendamento.

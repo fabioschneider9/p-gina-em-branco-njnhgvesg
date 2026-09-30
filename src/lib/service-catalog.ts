@@ -10,11 +10,19 @@
  *
  * Fonte: Valores_Qualivida.xlsx (Clínica Qualivida Resende/RJ) — valores
  * DESATUALIZADOS e informativos; o que importa é a existência da vinculação.
+ *
+ * Correção do champion (2026-09-01 21:02): o código TUSS NÃO é obrigatório —
+ * o serviço pode não ter código, ou ter código de pacote contratualizado com a
+ * operadora. O que define a existência do serviço é a vinculação de valor
+ * (RN-1-005): com valor cadastrado, o serviço existe e pode ser marcado/agendado.
  */
 
 export type CatalogService = {
   serviceId: string
+  /** Código TUSS quando existir; pode ser null (sem código) ou código de pacote contratual. */
   tuss: string | null
+  /** Código de pacote contratualizado com a operadora, quando aplicável. */
+  packageCode?: string
   label: string
 }
 
@@ -367,7 +375,18 @@ export function availableServices(payerId: string, unitId: string): CatalogServi
   return catalogServices.filter((service) => isServiceOffered(service.label, payerId, unitId))
 }
 
-/** Serviços sem código TUSS ficam BLOQUEADOS até receber código (contrato F1-T005). */
-export function isServiceBlockedByMissingCode(service: CatalogService): boolean {
-  return service.tuss === null
+/**
+ * Correção do champion (2026-09-01 21:02): código não é obrigatório.
+ * Um serviço sem TUSS existe normalmente — pode ter código de pacote contratual
+ * ou nenhum código. A existência/agendabilidade vem da vinculação de valor.
+ */
+export function isServiceBlockedByMissingCode(_service: CatalogService): boolean {
+  return false
+}
+
+/** Rótulo do código do serviço: TUSS, código de pacote ou "sem código". */
+export function serviceCodeLabel(service: CatalogService): string {
+  if (service.tuss) return `TUSS ${service.tuss}`
+  if (service.packageCode) return `Pacote ${service.packageCode}`
+  return 'Sem código (opcional)'
 }
