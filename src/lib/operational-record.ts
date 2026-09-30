@@ -1,10 +1,12 @@
 /**
- * F1-T006/F1-T007 — Registro operacional de prontuário/produção (SPEC-1-002)
+ * F1-T006/F1-T007/F1-T008 — Registro operacional de prontuário/produção (SPEC-1-002)
  *
  * F1-T006: criação de registro válido com dimensões mínimas, auditoria e versão.
  * F1-T007: bloqueios (ausência/ambiguidade/status desconhecido), bordas
  * (condicionais nulos, status antigo preservado), rejeição de conteúdo clínico
  * e correção por nova versão — inclusive de registro bloqueado.
+ * F1-T008: separação de evidência para o contrato de saída — somente registro
+ * VALIDO com produção efetivada segue para a SPEC-1-003.
  *
  * Fonte: SPEC-1-002 e contrato F1-FIELDS-BASELINE da F1-T005 (catálogo próprio
  * por clínica, guide_number + record_id, retenção permanente, TUSS opcional).
@@ -317,10 +319,7 @@ export function isEligibleForCentral(record: OperationalRecord): boolean {
 }
 
 /** Motivo de exclusão de um registro da saída para a central (F1-T008). */
-export type ExclusionReason =
-  | 'BLOQUEADO'
-  | 'STATUS_SEM_PRODUCAO'
-  | 'RASCUNHO'
+export type ExclusionReason = 'BLOQUEADO' | 'STATUS_SEM_PRODUCAO' | 'RASCUNHO'
 
 /** Resultado da separação de evidência para o contrato (F1-T008). */
 export type ContractSeparation = {
@@ -350,14 +349,8 @@ export function separateForContract(records: OperationalRecord[]): ContractSepar
       excluidos.push({ record, reason: 'STATUS_SEM_PRODUCAO' })
     }
   }
-
-/** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
-=======
   return { elegiveis, excluidos }
 }
-
-/** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
-=======
 
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
 export const recordFixtures = {
@@ -379,6 +372,7 @@ export const recordFixtures = {
   },
 }
 
+/** Fixtures da F1-T007/F1-T008 (TDD da SPEC): RED, bordas e privacidade. */
 export const f1t007Fixtures = {
   /**
    * RED — ausência de unit_id, serviço ambíguo (sem vínculo no catálogo) e
