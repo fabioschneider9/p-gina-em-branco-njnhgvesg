@@ -27,6 +27,7 @@ import {
   type SyntheticUser,
 } from '@/lib/rls-fixture'
 import {
+  buildProductionEnvelope,
   createOperationalRecord,
   f1t007Fixtures,
   isEligibleForCentral,
@@ -36,6 +37,7 @@ import {
   validateRecord,
   type ContractSeparation,
   type OperationalRecord,
+  type ProductionEnvelopeV1,
   type RecordAuditEvent,
   type RecordOperationResult,
 } from '@/lib/operational-record'
@@ -178,6 +180,37 @@ const Index = () => {
     setT008Feedback(
       `Separação executada: ${separation.elegiveis.length} elegível(is) para o contrato, ${separation.excluidos.length} excluído(s) com motivo.`,
     )
+  }
+
+  // F1-T010 — geração determinística do envelope production-record.v1.
+  const [t010Envelope, setT010Envelope] = useState<ProductionEnvelopeV1 | null>(null)
+  const [t010Second, setT010Second] = useState<ProductionEnvelopeV1 | null>(null)
+  const [t010Feedback, setT010Feedback] = useState<string | null>(null)
+
+  const generateT010Envelope = (asSecond = false) => {
+    const creation = createOperationalRecord(recordFixtures.valid, professionalUser)
+    if (!creation.record) {
+      setT010Feedback('Criação do registro de prova falhou — envelope não gerado.')
+      return
+    }
+    const result = buildProductionEnvelope(creation.record)
+    if (!result.ok) {
+      setT010Feedback(`Envelope não gerado: ${result.detail}`)
+      return
+    }
+    if (asSecond) {
+      setT010Second(result.envelope)
+      const identical = JSON.stringify(result.envelope) === JSON.stringify(t010Envelope)
+      setT010Feedback(
+        identical
+          ? `Segunda geração idêntica à primeira — determinismo provado (mesma chave: ${result.envelope.idempotency_key}).`
+          : 'Segunda geração DIFERENTE da primeira — determinismo FALHOU.',
+      )
+    } else {
+      setT010Envelope(result.envelope)
+      setT010Second(null)
+      setT010Feedback(`Envelope gerado com chave: ${result.envelope.idempotency_key}`)
+    }
   }
 
   const denialResults = denialScenarios.map((scenario) => {
@@ -1062,6 +1095,74 @@ const Index = () => {
                 ))}
                 {t008Separation.excluidos.length === 0 && (
                   <p className="mt-2 text-sm text-rose-800">Nenhum registro excluído.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-700">
+              <FilePlus2 size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">F1-T010 · Envelope production-record.v1</h3>
+              <p className="text-sm text-slate-500">
+                Registro VÁLIDO gera envelope completo, determinístico e com chave de idempotência —
+                conforme o contrato aprovado na F1-T009. Sem API ou credencial nesta fase.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => generateT010Envelope(false)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              Gerar envelope (F1-VALID-001)
+            </button>
+            <button
+              type="button"
+              onClick={() => generateT010Envelope(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              Gerar novamente (comparar)
+            </button>
+            {t010Feedback && (
+              <p
+                className="rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-700"
+                role="status"
+                aria-live="polite"
+              >
+                {t010Feedback}
+              </p>
+            )}
+          </div>
+
+          {t010Envelope && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">
+                  Envelope gerado (1ª geração)
+                </p>
+                <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                  {JSON.stringify(t010Envelope, null, 2)}
+                </pre>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                  2ª geração (comparação de determinismo)
+                </p>
+                {t010Second ? (
+                  <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                    {JSON.stringify(t010Second, null, 2)}
+                  </pre>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-500">
+                    Use “Gerar novamente (comparar)” para provar o determinismo.
+                  </p>
                 )}
               </div>
             </div>

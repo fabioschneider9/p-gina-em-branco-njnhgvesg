@@ -12,7 +12,7 @@
  * por clínica, guide_number + record_id, retenção permanente, TUSS opcional).
  */
 
-import { catalogPayers, isServiceOffered } from './service-catalog'
+import { catalogPayers, catalogServices, isServiceOffered } from './service-catalog'
 import { rlsFixture, type SyntheticUser } from './rls-fixture'
 
 /** Status de origem preservado — o sistema não reinterpreta (SPEC-1-002, fluxo 3). */
@@ -350,6 +350,88 @@ export function separateForContract(records: OperationalRecord[]): ContractSepar
     }
   }
   return { elegiveis, excluidos }
+}
+
+/**
+ * Envelope de saída conforme o contrato production-record.v1 aprovado na
+ * F1-T009 (SPEC-1-003). Estrutura espelha o JSON mínimo da SPEC.
+ */
+export type ProductionEnvelopeV1 = {
+  contract_version: 'production-record.v1'
+  record_id: string
+  source: {
+    system: string
+    source_record_id: string
+    version: number
+    evidence_ref: string
+  }
+  entity_id: string
+  unit_id: string
+  professional_id: string
+  service_ref: { id: string; label: string }
+  event_date: string
+  competency: string
+  quantity: number | null
+  unit_value: number | null
+  gross_value: number | null
+  status_source: StatusSource
+  validation_state: 'VALIDO'
+  responsible_user_id: string
+  audit: { created_by: string; updated_by: string; version: number }
+  idempotency_key: string
+}
+
+/** Sistema de origem declarado no contrato aprovado (F1-T009). */
+export const SOURCE_SYSTEM = 'nova-aplicacao-prontuario-producao'
+
+export type EnvelopeResult =
+  | { ok: true; envelope: ProductionEnvelopeV1 }
+  | { ok: false; reason: 'NOT_ELIGIBLE'; detail: string }
+
+/**
+ * F1-T010 — gera o envelope production-record.v1 a partir de um registro
+ * elegível (VALIDO + ATENDIDO). Determinístico: mesma entrada produz o mesmo
+ * envelope e a mesma chave de idempotência. Registro não elegível é rejeitado
+ * com motivo — nunca gera saída parcial (RN-1-006).
+ */
+export function buildProductionEnvelope(record: OperationalRecord): EnvelopeResult {
+  if (!isEligibleForCentral(record)) {
+    const detail =
+      record.validationState === 'BLOQUEADO'
+        ? `registro BLOQUEADO (${record.missingFields.join('; ')})`
+        : `status ${record.statusSource} mantém pendência — não é produção enviável`
+    return { ok: false, reason: 'NOT_ELIGIBLE', detail }
+  }
+  const service = catalogServices.find((s) => s.label === record.serviceRef)
+  const envelope: ProductionEnvelopeV1 = {
+    contract_version: 'production-record.v1',
+    record_id: record.recordId,
+    source: {
+      system: SOURCE_SYSTEM,
+      source_record_id: record.recordId,
+      version: record.version,
+      evidence_ref: `fixture://fase-1/${record.recordId}`,
+    },
+    entity_id: record.entityId,
+    unit_id: record.unitId,
+    professional_id: record.professionalId,
+    service_ref: { id: service?.serviceId ?? record.serviceRef, label: record.serviceRef },
+    event_date: record.eventDate,
+    competency: record.competency,
+    quantity: record.quantity ?? null,
+    unit_value: record.unitValue ?? null,
+    gross_value: record.grossValue ?? null,
+    status_source: record.statusSource,
+    validation_state: 'VALIDO',
+    responsible_user_id: record.responsibleUserId,
+    audit: {
+      created_by: record.createdBy,
+      updated_by: record.updatedBy,
+      version: record.version,
+    },
+    idempotency_key: `${SOURCE_SYSTEM}:${record.recordId}:${record.version}`,
+  }
+  return { ok: true, envelope }
 }
 
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
