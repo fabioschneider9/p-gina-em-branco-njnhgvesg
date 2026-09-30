@@ -307,10 +307,13 @@ export function reviseOperationalRecord(
 
 /**
  * Elegibilidade para o contrato de saída (SPEC-1-003 / F1-T008): somente
- * registro VALIDO segue para a central; BLOQUEADO permanece fora.
+ * registro VALIDO com produção efetivada (status ATENDIDO) segue para a
+ * central. BLOQUEADO permanece fora; AGENDADO/CANCELADO/FALTOU mantêm a
+ * pendência — status preservado, sem conversão (SPEC-1-002, cenário "Status
+ * antigo": manter pendência, não enviar produção inexistente).
  */
 export function isEligibleForCentral(record: OperationalRecord): boolean {
-  return record.validationState === 'VALIDO'
+  return record.validationState === 'VALIDO' && record.statusSource === 'ATENDIDO'
 }
 
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */

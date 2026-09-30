@@ -147,6 +147,12 @@ const Index = () => {
       setT007Feedback('Execute um cenário de bloqueio antes de corrigir.')
       return
     }
+    if (t007Record.validationState !== 'BLOQUEADO') {
+      setT007Feedback(
+        `Registro ${t007Record.recordId} está ${t007Record.validationState} — a correção por nova versão se aplica a registro BLOQUEADO.`,
+      )
+      return
+    }
     setT007Feedback(
       applyT007Result(
         reviseOperationalRecord(
@@ -902,10 +908,16 @@ const Index = () => {
                     aria-live="polite"
                   >
                     {t007Record.validationState === 'VALIDO' ? (
-                      <>
-                        <CheckCircle2 size={13} aria-hidden="true" /> Elegível para a central:{' '}
-                        {isEligibleForCentral(t007Record) ? 'SIM' : 'NÃO'}
-                      </>
+                      isEligibleForCentral(t007Record) ? (
+                        <>
+                          <CheckCircle2 size={13} aria-hidden="true" /> Elegível para a central: SIM
+                        </>
+                      ) : (
+                        <>
+                          <TriangleAlert size={13} aria-hidden="true" /> Pendência mantida — status{' '}
+                          {t007Record.statusSource} não é produção enviável à central
+                        </>
+                      )
                     ) : (
                       <>
                         <Ban size={13} aria-hidden="true" /> BLOQUEADO — fora da saída para a
