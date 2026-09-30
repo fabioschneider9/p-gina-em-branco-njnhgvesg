@@ -11,6 +11,14 @@
 1. `isEligibleForCentral` = `VALIDO` **e** `status_source === 'ATENDIDO'`; badge da tela explica a pendência ("status AGENDADO não é produção enviável à central").
 2. "Corrigir bloqueado" recusa registro não-BLOQUEADO com mensagem explicativa.
 
+**Rodada 2 (v0.0.34) — correção da própria correção:**
+
+- Sintoma: champion reportou que a recusa do item 2 ("Registro F1-EDGE-001 está VALIDO — a correção por nova versão se aplica a registro BLOQUEADO") estava incorreta.
+- Causa raiz: a recusa era excesso de implementação, não regra da SPEC. CA-1-009 diz "correção gera versão nova, relaciona a anterior, registra autor/motivo" sem restringir ao registro bloqueado; a F1-T006 já corrigia registro VALIDO.
+- Correção: removida a restrição — correção vale para qualquer registro (VALIDO ou BLOQUEADO); botão renomeado para "Corrigir registro (nova versão)".
+- Verificação: F1-EDGE-001 (VALIDO) corrigido → VALIDO v2 (REC-EVT-0002, RECORD_REVISED) com v1 preservada; pipeline v0.0.34 verde.
+- Lição: restrição adicional ao critério de aceite precisa de base na SPEC; se não tem, é escopo a mais.
+
 **Verificação automática:** pipeline Skip v0.0.32 verde (setup, estática, build, integrações, testes).
 
 **Verificação no caminho real (reprodução + regressão):**
