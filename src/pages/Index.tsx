@@ -5,8 +5,10 @@ import {
   CheckCircle2,
   ChevronRight,
   EyeOff,
+  FilePlus2,
   History,
   LockKeyhole,
+  PenLine,
   ShieldCheck,
   TriangleAlert,
   Users,
@@ -24,6 +26,14 @@ import {
   type ScopePolicy,
   type SyntheticUser,
 } from '@/lib/rls-fixture'
+import {
+  createOperationalRecord,
+  recordFixtures,
+  reviseOperationalRecord,
+  validateRecord,
+  type OperationalRecord,
+  type RecordAuditEvent,
+} from '@/lib/operational-record'
 import {
   availableServices,
   catalogPayers,
@@ -56,6 +66,51 @@ const Index = () => {
 
   const clinicalValidation = useMemo(() => validatePayload(privacySamples.clinical), [])
   const administrativeValidation = useMemo(() => validatePayload(privacySamples.administrative), [])
+
+  // F1-T006 — registro operacional: estado da demonstração (cenário principal F1-VALID-001).
+  const professionalUser = useMemo<SyntheticUser>(
+    () => rlsFixture.users.find((u) => u.id === 'PROF-USER-001') ?? rlsFixture.users[0],
+    [],
+  )
+  const [operationalRecord, setOperationalRecord] = useState<OperationalRecord | null>(null)
+  const [recordAudit, setRecordAudit] = useState<RecordAuditEvent[]>([])
+  const [recordFeedback, setRecordFeedback] = useState<string | null>(null)
+  const recordValidation = useMemo(() => validateRecord(recordFixtures.valid), [])
+
+  const handleCreateRecord = () => {
+    const result = createOperationalRecord(recordFixtures.valid, professionalUser)
+    if (result.record && result.audit) {
+      setOperationalRecord(result.record)
+      setRecordAudit((prev) => [result.audit as RecordAuditEvent, ...prev])
+      setRecordFeedback(
+        `Registro ${result.record.recordId} criado como ${result.record.validationState} (v${result.record.version}, evento ${result.audit.eventId})`,
+      )
+    } else {
+      setRecordFeedback('Criação bloqueada: escopo ou dimensões mínimas insuficientes.')
+    }
+  }
+
+  const handleReviseRecord = () => {
+    if (!operationalRecord) {
+      setRecordFeedback('Crie o registro antes de corrigir.')
+      return
+    }
+    const result = reviseOperationalRecord(
+      operationalRecord,
+      { responsibleUserId: 'ADMIN-USER-001' },
+      professionalUser,
+      'Correção do responsável pela validação',
+    )
+    if (result.record && result.audit) {
+      setOperationalRecord(result.record)
+      setRecordAudit((prev) => [result.audit as RecordAuditEvent, ...prev])
+      setRecordFeedback(
+        `Correção criada: v${result.audit.version} (evento ${result.audit.eventId}); versão anterior preservada no histórico`,
+      )
+    } else {
+      setRecordFeedback('Correção bloqueada: escopo ou dimensões mínimas insuficientes.')
+    }
+  }
 
   const denialResults = denialScenarios.map((scenario) => {
     const user = rlsFixture.users.find((u) => u.id === scenario.userId)!
@@ -577,6 +632,143 @@ const Index = () => {
             Consulta/Particular tem vigência <strong>futura</strong> (R$ 150 → R$ 200 em
             2027-01-01). Registros anteriores a essas datas mantêm o valor da época.
           </p>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-violet-50 p-2 text-violet-700">
+              <FilePlus2 size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">F1-T006 · Registro operacional válido</h3>
+              <p className="text-sm text-slate-500">
+                Fixture completa (F1-VALID-001) cria registro com dimensões mínimas, responsável,
+                evidência, auditoria e versão — estado VÁLIDO.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Fixture F1-VALID-001 (cenário principal)
+              </p>
+              <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                {JSON.stringify(recordFixtures.valid, null, 2)}
+              </pre>
+              <p
+                className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${recordValidation.state === 'VALIDO' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}
+                role="status"
+                aria-live="polite"
+              >
+                {recordValidation.state === 'VALIDO' ? (
+                  <>
+                    <CheckCircle2 size={13} aria-hidden="true" /> Pré-validação: VÁLIDO
+                  </>
+                ) : (
+                  <>
+                    <TriangleAlert size={13} aria-hidden="true" /> Pré-validação:{' '}
+                    {recordValidation.state}
+                  </>
+                )}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleCreateRecord}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  <FilePlus2 size={15} aria-hidden="true" /> Criar registro
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReviseRecord}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  <PenLine size={15} aria-hidden="true" /> Corrigir (nova versão)
+                </button>
+              </div>
+              {recordFeedback && (
+                <p
+                  className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-slate-700"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {recordFeedback}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Registro criado (estado do sistema)
+              </p>
+              {operationalRecord ? (
+                <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                  {JSON.stringify(operationalRecord, null, 2)}
+                </pre>
+              ) : (
+                <p className="rounded-lg bg-white p-3 text-sm text-slate-500">
+                  Nenhum registro criado ainda. Use “Criar registro”.
+                </p>
+              )}
+              {operationalRecord && (
+                <p
+                  className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <CheckCircle2 size={13} aria-hidden="true" /> Estado: VÁLIDO · versão{' '}
+                  {operationalRecord.version}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Evento</th>
+                  <th className="px-4 py-3">Ação</th>
+                  <th className="px-4 py-3">Ator</th>
+                  <th className="px-4 py-3">Registro</th>
+                  <th className="px-4 py-3">Versão</th>
+                  <th className="px-4 py-3">Quando</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recordAudit.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-sm text-slate-500" colSpan={6}>
+                      Nenhum evento de auditoria do registro ainda. Use os botões acima.
+                    </td>
+                  </tr>
+                ) : (
+                  recordAudit.map((event) => (
+                    <tr key={event.eventId}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.eventId}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">{event.action}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.actorId}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.recordId}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        v{event.version}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.occurredAt}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">
