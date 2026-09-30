@@ -154,7 +154,7 @@ const Index = () => {
           t007Record,
           { unitId: rlsFixture.unit.id, serviceRef: 'ECG', statusSource: 'ATENDIDO' },
           professionalUser,
-          'Correção das dimensões ausentes do registro bloqueado',
+          'Correção do registro pelo champion (nova versão)',
         ),
       ),
     )
