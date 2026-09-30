@@ -28,11 +28,14 @@ import {
 } from '@/lib/rls-fixture'
 import {
   createOperationalRecord,
+  f1t007Fixtures,
+  isEligibleForCentral,
   recordFixtures,
   reviseOperationalRecord,
   validateRecord,
   type OperationalRecord,
   type RecordAuditEvent,
+  type RecordOperationResult,
 } from '@/lib/operational-record'
 import {
   availableServices,
@@ -77,17 +80,25 @@ const Index = () => {
   const [recordFeedback, setRecordFeedback] = useState<string | null>(null)
   const recordValidation = useMemo(() => validateRecord(recordFixtures.valid), [])
 
-  const handleCreateRecord = () => {
-    const result = createOperationalRecord(recordFixtures.valid, professionalUser)
+  const applyRecordResult = (result: RecordOperationResult) => {
     if (result.record && result.audit) {
       setOperationalRecord(result.record)
       setRecordAudit((prev) => [result.audit as RecordAuditEvent, ...prev])
-      setRecordFeedback(
-        `Registro ${result.record.recordId} criado como ${result.record.validationState} (v${result.record.version}, evento ${result.audit.eventId})`,
-      )
-    } else {
-      setRecordFeedback('Criação bloqueada: escopo ou dimensões mínimas insuficientes.')
+      return `Registro ${result.record.recordId} registrado como ${result.record.validationState} (v${result.record.version}, evento ${result.audit.eventId})`
     }
+    if (result.outcome === 'CLINICAL_REJECTED') {
+      return `Conteúdo clínico rejeitado (${(result.detected ?? []).join(', ')}) — nada foi persistido.`
+    }
+    if (result.outcome === 'SCOPE_DENIED') {
+      return 'Operação negada: usuário sem escopo coberto (RLS).'
+    }
+    return 'Operação não realizada.'
+  }
+
+  const handleCreateRecord = () => {
+    setRecordFeedback(
+      applyRecordResult(createOperationalRecord(recordFixtures.valid, professionalUser)),
+    )
   }
 
   const handleReviseRecord = () => {
@@ -95,21 +106,57 @@ const Index = () => {
       setRecordFeedback('Crie o registro antes de corrigir.')
       return
     }
-    const result = reviseOperationalRecord(
-      operationalRecord,
-      { responsibleUserId: 'ADMIN-USER-001' },
-      professionalUser,
-      'Correção do responsável pela validação',
+    setRecordFeedback(
+      applyRecordResult(
+        reviseOperationalRecord(
+          operationalRecord,
+          { responsibleUserId: 'ADMIN-USER-001' },
+          professionalUser,
+          'Correção do responsável pela validação',
+        ),
+      ),
     )
+  }
+
+  // F1-T007 — cenários de bloqueio, bordas e versionamento.
+  const [t007Record, setT007Record] = useState<OperationalRecord | null>(null)
+  const [t007Audit, setT007Audit] = useState<RecordAuditEvent[]>([])
+  const [t007Feedback, setT007Feedback] = useState<string | null>(null)
+
+  const applyT007Result = (result: RecordOperationResult) => {
     if (result.record && result.audit) {
-      setOperationalRecord(result.record)
-      setRecordAudit((prev) => [result.audit as RecordAuditEvent, ...prev])
-      setRecordFeedback(
-        `Correção criada: v${result.audit.version} (evento ${result.audit.eventId}); versão anterior preservada no histórico`,
-      )
-    } else {
-      setRecordFeedback('Correção bloqueada: escopo ou dimensões mínimas insuficientes.')
+      setT007Record(result.record)
+      setT007Audit((prev) => [result.audit as RecordAuditEvent, ...prev])
+      return `Registro ${result.record.recordId}: ${result.record.validationState} (v${result.record.version}, evento ${result.audit.eventId})${result.record.missingFields.length > 0 ? ` — ausências: ${result.record.missingFields.join('; ')}` : ''}`
     }
+    if (result.outcome === 'CLINICAL_REJECTED') {
+      return `Conteúdo clínico rejeitado (${(result.detected ?? []).join(', ')}) — nada foi persistido.`
+    }
+    if (result.outcome === 'SCOPE_DENIED') {
+      return 'Operação negada: usuário sem escopo coberto (RLS).'
+    }
+    return 'Operação não realizada.'
+  }
+
+  const runT007 = (fixture: typeof f1t007Fixtures.invalid) => {
+    setT007Feedback(applyT007Result(createOperationalRecord(fixture, professionalUser)))
+  }
+
+  const fixT007Blocked = () => {
+    if (!t007Record) {
+      setT007Feedback('Execute um cenário de bloqueio antes de corrigir.')
+      return
+    }
+    setT007Feedback(
+      applyT007Result(
+        reviseOperationalRecord(
+          t007Record,
+          { unitId: rlsFixture.unit.id, serviceRef: 'ECG', statusSource: 'ATENDIDO' },
+          professionalUser,
+          'Correção das dimensões ausentes do registro bloqueado',
+        ),
+      ),
+    )
   }
 
   const denialResults = denialScenarios.map((scenario) => {
@@ -763,6 +810,150 @@ const Index = () => {
                       <td className="px-4 py-3 font-mono text-xs text-slate-600">
                         {event.occurredAt}
                       </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
+              <TriangleAlert size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">
+                F1-T007 · Bloqueios, bordas e versionamento
+              </h3>
+              <p className="text-sm text-slate-500">
+                Ausência, ambiguidade e status desconhecido bloqueiam; condicionais ficam nulos;
+                status antigo é preservado; conteúdo clínico é rejeitado; correção cria nova versão.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Cenários da SPEC (fixtures sintéticas)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => runT007(f1t007Fixtures.invalid)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  F1-INVALID-001 (RED)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runT007(f1t007Fixtures.edgeNull)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  F1-EDGE-001 (nulos)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runT007(f1t007Fixtures.edgeLate)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  F1-EDGE-002 (AGENDADO)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runT007(f1t007Fixtures.edgeClinical)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  F1-EDGE-003 (clínico)
+                </button>
+                <button
+                  type="button"
+                  onClick={fixT007Blocked}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+                >
+                  Corrigir bloqueado (nova versão)
+                </button>
+              </div>
+              {t007Feedback && (
+                <p
+                  className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-slate-700"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {t007Feedback}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Registro do cenário (estado do sistema)
+              </p>
+              {t007Record ? (
+                <>
+                  <pre className="overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700">
+                    {JSON.stringify(t007Record, null, 2)}
+                  </pre>
+                  <p
+                    className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${t007Record.validationState === 'VALIDO' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {t007Record.validationState === 'VALIDO' ? (
+                      <>
+                        <CheckCircle2 size={13} aria-hidden="true" /> Elegível para a central:{' '}
+                        {isEligibleForCentral(t007Record) ? 'SIM' : 'NÃO'}
+                      </>
+                    ) : (
+                      <>
+                        <Ban size={13} aria-hidden="true" /> BLOQUEADO — fora da saída para a
+                        central
+                      </>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <p className="rounded-lg bg-white p-3 text-sm text-slate-500">
+                  Nenhum cenário executado ainda. Use os botões acima.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Evento</th>
+                  <th className="px-4 py-3">Ação</th>
+                  <th className="px-4 py-3">Registro</th>
+                  <th className="px-4 py-3">Versão</th>
+                  <th className="px-4 py-3">Motivo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {t007Audit.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-sm text-slate-500" colSpan={5}>
+                      Nenhum evento de auditoria ainda. Use os botões acima.
+                    </td>
+                  </tr>
+                ) : (
+                  t007Audit.map((event) => (
+                    <tr key={event.eventId}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.eventId}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">{event.action}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {event.recordId}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        v{event.version}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">{event.reason ?? '—'}</td>
                     </tr>
                   ))
                 )}
