@@ -147,12 +147,7 @@ const Index = () => {
       setT007Feedback('Execute um cenário de bloqueio antes de corrigir.')
       return
     }
-    if (t007Record.validationState !== 'BLOQUEADO') {
-      setT007Feedback(
-        `Registro ${t007Record.recordId} está ${t007Record.validationState} — a correção por nova versão se aplica a registro BLOQUEADO.`,
-      )
-      return
-    }
+
     setT007Feedback(
       applyT007Result(
         reviseOperationalRecord(
@@ -879,7 +874,7 @@ const Index = () => {
                   onClick={fixT007Blocked}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
                 >
-                  Corrigir bloqueado (nova versão)
+                  Corrigir registro (nova versão)
                 </button>
               </div>
               {t007Feedback && (
