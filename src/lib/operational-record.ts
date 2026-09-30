@@ -350,8 +350,13 @@ export function separateForContract(records: OperationalRecord[]): ContractSepar
       excluidos.push({ record, reason: 'STATUS_SEM_PRODUCAO' })
     }
   }
+
+/** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
+=======
   return { elegiveis, excluidos }
 }
+
+/** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
 =======
 
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
