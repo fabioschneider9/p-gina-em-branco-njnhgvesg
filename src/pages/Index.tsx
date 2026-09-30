@@ -32,7 +32,9 @@ import {
   isEligibleForCentral,
   recordFixtures,
   reviseOperationalRecord,
+  separateForContract,
   validateRecord,
+  type ContractSeparation,
   type OperationalRecord,
   type RecordAuditEvent,
   type RecordOperationResult,
@@ -147,7 +149,6 @@ const Index = () => {
       setT007Feedback('Execute um cenário de bloqueio antes de corrigir.')
       return
     }
-
     setT007Feedback(
       applyT007Result(
         reviseOperationalRecord(
@@ -157,6 +158,25 @@ const Index = () => {
           'Correção do registro pelo champion (nova versão)',
         ),
       ),
+    )
+  }
+
+  // F1-T008 — separação de evidência para o contrato de saída (SPEC-1-003).
+  const [t008Separation, setT008Separation] = useState<ContractSeparation | null>(null)
+  const [t008Feedback, setT008Feedback] = useState<string | null>(null)
+
+  const runT008Separation = () => {
+    // Cria os três registros de prova a partir das fixtures da SPEC.
+    const created: OperationalRecord[] = []
+    const inputs = [recordFixtures.valid, f1t007Fixtures.blocked, f1t007Fixtures.edgeLate]
+    for (const input of inputs) {
+      const result = createOperationalRecord(input, professionalUser)
+      if (result.record) created.push(result.record)
+    }
+    const separation = separateForContract(created)
+    setT008Separation(separation)
+    setT008Feedback(
+      `Separação executada: ${separation.elegiveis.length} elegível(is) para o contrato, ${separation.excluidos.length} excluído(s) com motivo.`,
     )
   }
 
@@ -967,6 +987,85 @@ const Index = () => {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-teal-50 p-2 text-teal-700">
+              <FilePlus2 size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">
+                F1-T008 · Evidência do registro para o contrato
+              </h3>
+              <p className="text-sm text-slate-500">
+                Somente registro VÁLIDO com produção efetivada é separado para a SPEC-1-003;
+                BLOQUEADO e pendências permanecem fora da saída, com motivo.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={runT008Separation}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              Executar separação (3 registros de prova)
+            </button>
+            {t008Feedback && (
+              <p
+                className="rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-700"
+                role="status"
+                aria-live="polite"
+              >
+                {t008Feedback}
+              </p>
+            )}
+          </div>
+
+          {t008Separation && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                  Segue para o contrato ({t008Separation.elegiveis.length})
+                </p>
+                {t008Separation.elegiveis.map((record) => (
+                  <pre
+                    key={record.recordId}
+                    className="mt-2 overflow-x-auto rounded-lg bg-white p-3 font-mono text-xs text-slate-700"
+                  >
+                    {JSON.stringify(record, null, 2)}
+                  </pre>
+                ))}
+                {t008Separation.elegiveis.length === 0 && (
+                  <p className="mt-2 text-sm text-emerald-800">Nenhum registro elegível.</p>
+                )}
+              </div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-rose-700">
+                  Fora da saída ({t008Separation.excluidos.length})
+                </p>
+                {t008Separation.excluidos.map(({ record, reason }) => (
+                  <div key={record.recordId} className="mt-2 rounded-lg bg-white p-3">
+                    <p className="font-mono text-xs font-bold text-rose-700">
+                      {record.recordId} — motivo: {reason}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {reason === 'BLOQUEADO'
+                        ? `Registro bloqueado (${record.missingFields.join('; ')})`
+                        : reason === 'STATUS_SEM_PRODUCAO'
+                          ? `Status ${record.statusSource} mantém pendência — não é produção enviável`
+                          : 'Registro em rascunho'}
+                    </p>
+                  </div>
+                ))}
+                {t008Separation.excluidos.length === 0 && (
+                  <p className="mt-2 text-sm text-rose-800">Nenhum registro excluído.</p>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">

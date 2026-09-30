@@ -316,6 +316,44 @@ export function isEligibleForCentral(record: OperationalRecord): boolean {
   return record.validationState === 'VALIDO' && record.statusSource === 'ATENDIDO'
 }
 
+/** Motivo de exclusão de um registro da saída para a central (F1-T008). */
+export type ExclusionReason =
+  | 'BLOQUEADO'
+  | 'STATUS_SEM_PRODUCAO'
+  | 'RASCUNHO'
+
+/** Resultado da separação de evidência para o contrato (F1-T008). */
+export type ContractSeparation = {
+  /** Registros elegíveis: payload versionado pronto para SPEC-1-003. */
+  elegiveis: OperationalRecord[]
+  /** Registros fora da saída, com motivo determinístico. */
+  excluidos: Array<{ record: OperationalRecord; reason: ExclusionReason }>
+}
+
+/**
+ * F1-T008 — separa a evidência do registro para o contrato de saída:
+ * somente registro VALIDO com produção efetivada é separado para SPEC-1-003;
+ * BLOQUEADO e pendências (AGENDADO/CANCELADO/FALTOU) permanecem fora, com
+ * motivo. A separação não altera nenhum registro — é leitura determinística.
+ */
+export function separateForContract(records: OperationalRecord[]): ContractSeparation {
+  const elegiveis: OperationalRecord[] = []
+  const excluidos: ContractSeparation['excluidos'] = []
+  for (const record of records) {
+    if (isEligibleForCentral(record)) {
+      elegiveis.push(record)
+    } else if (record.validationState === 'BLOQUEADO') {
+      excluidos.push({ record, reason: 'BLOQUEADO' })
+    } else if (record.validationState === 'RASCUNHO') {
+      excluidos.push({ record, reason: 'RASCUNHO' })
+    } else {
+      excluidos.push({ record, reason: 'STATUS_SEM_PRODUCAO' })
+    }
+  }
+  return { elegiveis, excluidos }
+}
+=======
+
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
 export const recordFixtures = {
   /** Cenário principal (GREEN): todas as dimensões mínimas presentes. */
@@ -336,7 +374,6 @@ export const recordFixtures = {
   },
 }
 
-/** Fixtures da F1-T007 (TDD da SPEC): RED, bordas e privacidade. */
 export const f1t007Fixtures = {
   /**
    * RED — ausência de unit_id, serviço ambíguo (sem vínculo no catálogo) e
@@ -385,6 +422,25 @@ export const f1t007Fixtures = {
     statusSource: 'AGENDADO' as const,
     responsibleUserId: 'PROF-USER-001',
     evidenceRef: 'EVID-TEST-004',
+    quantity: null,
+    unitValue: null,
+    grossValue: null,
+  },
+  /**
+   * F1-T008: registro BLOQUEADO sintético (F1-BLOCKED-001) — deve permanecer
+   * fora da saída para a central.
+   */
+  blocked: {
+    recordId: 'F1-BLOCKED-001',
+    entityId: rlsFixture.entity.id,
+    unitId: rlsFixture.unit.id,
+    professionalId: rlsFixture.professional.id,
+    serviceRef: 'Serviço sem vínculo no catálogo',
+    eventDate: '2026-09-22',
+    competency: '2026-09',
+    statusSource: 'ATENDIDO' as const,
+    responsibleUserId: 'PROF-USER-001',
+    evidenceRef: 'EVID-TEST-006',
     quantity: null,
     unitValue: null,
     grossValue: null,
