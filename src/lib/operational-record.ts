@@ -191,17 +191,24 @@ function nextAuditEventId(): string {
   return `REC-EVT-${String(auditSequence).padStart(4, '0')}`
 }
 
+/**
+ * Escopo coberto: compara apenas as dimensões PRESENTES (não vazias). Dimensão
+ * ausente não pode ser casada com escopo — vira missing_fields e o registro
+ * nasce BLOQUEADO, fora da saída para a central (F1-T007/RED). Dimensão presente
+ * e divergente do escopo do ator continua sendo negação de RLS.
+ */
 function isScopeCovered(
   actor: SyntheticUser,
   entityId: string,
   unitId: string,
   professionalId: string,
 ): boolean {
+  if (actor.scopes.length === 0) return false
   return actor.scopes.some(
     (scope) =>
-      scope.entityId === entityId &&
-      scope.unitId === unitId &&
-      scope.professionalId === professionalId,
+      (entityId === '' || scope.entityId === entityId) &&
+      (unitId === '' || scope.unitId === unitId) &&
+      (professionalId === '' || scope.professionalId === professionalId),
   )
 }
 
