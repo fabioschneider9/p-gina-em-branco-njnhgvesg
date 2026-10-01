@@ -31,11 +31,15 @@ import {
   createOperationalRecord,
   f1t007Fixtures,
   isEligibleForCentral,
+  issuedEnvelopeCount,
+  issueEnvelope,
   recordFixtures,
+  resetIssuedEnvelopes,
   reviseOperationalRecord,
   separateForContract,
   validateRecord,
   type ContractSeparation,
+  type EnvelopeIssue,
   type OperationalRecord,
   type ProductionEnvelopeV1,
   type RecordAuditEvent,
@@ -211,6 +215,45 @@ const Index = () => {
       setT010Second(null)
       setT010Feedback(`Envelope gerado com chave: ${result.envelope.idempotency_key}`)
     }
+  }
+
+  // F1-T011 — rejeição, idempotência e privacidade no contrato.
+  const [t011Log, setT011Log] = useState<Array<{ label: string; issue: EnvelopeIssue }>>([])
+  const [t011Count, setT011Count] = useState(0)
+
+  const runT011 = (label: string, record: OperationalRecord) => {
+    const issue = issueEnvelope(record)
+    setT011Log((prev) => [{ label, issue }, ...prev])
+    setT011Count(issuedEnvelopeCount())
+  }
+
+  const t011RunBlocked = () => {
+    const creation = createOperationalRecord(f1t007Fixtures.blocked, professionalUser)
+    if (creation.record) runT011('F1-BLOCKED-001 (bloqueado)', creation.record)
+  }
+  const t011RunDuplicate = () => {
+    const creation = createOperationalRecord(recordFixtures.valid, professionalUser)
+    if (creation.record) runT011('F1-DUPLICATE-001 (repetição)', creation.record)
+  }
+  const t011RunNull = () => {
+    const creation = createOperationalRecord(f1t007Fixtures.nullValue, professionalUser)
+    if (creation.record) runT011('F1-NULL-VALUE-001 (nulos)', creation.record)
+  }
+  const t011RunClinical = () => {
+    const creation = createOperationalRecord(f1t007Fixtures.edgeClinical, professionalUser)
+    if (creation.record) {
+      runT011('F1-PRIVACY-001 (clínico)', creation.record)
+    } else {
+      // A criação já rejeita o clínico; a fronteira do contrato é exercitada com o objeto bruto.
+      const issue = issueEnvelope(f1t007Fixtures.edgeClinical as unknown as OperationalRecord)
+      setT011Log((prev) => [{ label: 'F1-PRIVACY-001 (clínico)', issue }, ...prev])
+      setT011Count(issuedEnvelopeCount())
+    }
+  }
+  const t011Reset = () => {
+    resetIssuedEnvelopes()
+    setT011Log([])
+    setT011Count(0)
   }
 
   const denialResults = denialScenarios.map((scenario) => {
@@ -1167,6 +1210,118 @@ const Index = () => {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-rose-50 p-2 text-rose-700">
+              <Ban size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">
+                F1-T011 · Rejeição, idempotência e privacidade
+              </h3>
+              <p className="text-sm text-slate-500">
+                Bloqueado/duplicado/identidade ambígua não geram saída; repetição não duplica; campo
+                clínico é rejeitado sem persistir.
+              </p>
+            </div>
+            <div className="ml-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Envelopes emitidos
+              </p>
+              <p className="text-2xl font-bold text-[#123b66]" role="status" aria-live="polite">
+                {t011Count}
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={t011RunBlocked}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#123b66] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#0f2f52] focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              F1-BLOCKED-001
+            </button>
+            <button
+              type="button"
+              onClick={t011RunDuplicate}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              F1-DUPLICATE-001 (2x)
+            </button>
+            <button
+              type="button"
+              onClick={t011RunNull}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              F1-NULL-VALUE-001
+            </button>
+            <button
+              type="button"
+              onClick={t011RunClinical}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              F1-PRIVACY-001
+            </button>
+            <button
+              type="button"
+              onClick={t011Reset}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
+            >
+              Reiniciar
+            </button>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Cenário</th>
+                  <th className="px-4 py-3">Resultado</th>
+                  <th className="px-4 py-3">Detalhe</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {t011Log.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-sm text-slate-500" colSpan={3}>
+                      Nenhum cenário executado ainda. Use os botões acima.
+                    </td>
+                  </tr>
+                ) : (
+                  t011Log.map((entry, index) => (
+                    <tr key={`${entry.label}-${index}`}>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                        {entry.label}
+                      </td>
+                      <td className="px-4 py-3">
+                        {entry.issue.outcome === 'EMITIDO' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                            <CheckCircle2 size={13} aria-hidden="true" /> EMITIDO
+                          </span>
+                        ) : entry.issue.outcome === 'DUPLICADO' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                            <History size={13} aria-hidden="true" /> DUPLICADO (sem nova saída)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
+                            <Ban size={13} aria-hidden="true" /> REJEITADO ({entry.issue.code})
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {entry.issue.outcome === 'REJEITADO'
+                          ? entry.issue.detail
+                          : entry.issue.envelope.idempotency_key}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">

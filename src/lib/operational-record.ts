@@ -434,6 +434,77 @@ export function buildProductionEnvelope(record: OperationalRecord): EnvelopeResu
   return { ok: true, envelope }
 }
 
+/** Resultado da emissão pelo contrato (F1-T011). */
+export type EnvelopeIssue =
+  | { outcome: 'EMITIDO'; envelope: ProductionEnvelopeV1 }
+  | { outcome: 'DUPLICADO'; envelope: ProductionEnvelopeV1 }
+  | {
+      outcome: 'REJEITADO'
+      code: 'NAO_ELEGIVEL' | 'IDENTIDADE_AMBIGUA' | 'CLINICAL_CONTENT'
+      detail: string
+      recordId?: string
+    }
+
+/** Registro de chaves já emitidas nesta sessão (idempotência da Fase 1, em memória). */
+const issuedEnvelopes = new Map<string, ProductionEnvelopeV1>()
+
+/** Reinicia o registro de idempotência (uso da demonstração). */
+export function resetIssuedEnvelopes(): void {
+  issuedEnvelopes.clear()
+}
+
+/** Quantidade de envelopes efetivamente emitidos (duplicata nunca conta). */
+export function issuedEnvelopeCount(): number {
+  return issuedEnvelopes.size
+}
+
+/**
+ * F1-T011 — camada do contrato: valida privacidade, identidade e elegibilidade
+ * ANTES de gerar; rejeita com código estruturado sem saída parcial (RN-1-006/
+ * RN-1-007). Chave já emitida devolve o MESMO envelope como DUPLICADO — a
+ * repetição não cria nova saída (RN-1-005/CA-1-013).
+ */
+export function issueEnvelope(record: OperationalRecord): EnvelopeIssue {
+  // Privacidade na fronteira do contrato (defesa em profundidade além da criação).
+  const detected = detectClinicalContent(record)
+  if (detected.length > 0) {
+    return {
+      outcome: 'REJEITADO',
+      code: 'CLINICAL_CONTENT',
+      detail: `conteúdo clínico detectado (${detected.join(', ')})`,
+      recordId: record.recordId,
+    }
+  }
+  // Identidade: as três dimensões devem coincidir com a identidade oficial (F1-T002).
+  const identityOk =
+    record.entityId === rlsFixture.entity.id &&
+    record.unitId === rlsFixture.unit.id &&
+    record.professionalId === rlsFixture.professional.id
+  if (!identityOk) {
+    return {
+      outcome: 'REJEITADO',
+      code: 'IDENTIDADE_AMBIGUA',
+      detail: 'identidade (entidade/unidade/profissional) não confirmada',
+      recordId: record.recordId,
+    }
+  }
+  const built = buildProductionEnvelope(record)
+  if (!built.ok) {
+    return {
+      outcome: 'REJEITADO',
+      code: 'NAO_ELEGIVEL',
+      detail: built.detail,
+      recordId: record.recordId,
+    }
+  }
+  const existing = issuedEnvelopes.get(built.envelope.idempotency_key)
+  if (existing) {
+    return { outcome: 'DUPLICADO', envelope: existing }
+  }
+  issuedEnvelopes.set(built.envelope.idempotency_key, built.envelope)
+  return { outcome: 'EMITIDO', envelope: built.envelope }
+}
+
 /** Fixtures da SPEC-1-002 (TDD): sem dados pessoais reais. */
 export const recordFixtures = {
   /** Cenário principal (GREEN): todas as dimensões mínimas presentes. */
@@ -522,6 +593,25 @@ export const f1t007Fixtures = {
     statusSource: 'ATENDIDO' as const,
     responsibleUserId: 'PROF-USER-001',
     evidenceRef: 'EVID-TEST-006',
+    quantity: null,
+    unitValue: null,
+    grossValue: null,
+  },
+  /**
+   * F1-T011: F1-NULL-VALUE-001 — registro válido com todos os valores
+   * condicionais nulos; o envelope deve preservar os nulos (CA-1-015).
+   */
+  nullValue: {
+    recordId: 'F1-NULL-VALUE-001',
+    entityId: rlsFixture.entity.id,
+    unitId: rlsFixture.unit.id,
+    professionalId: rlsFixture.professional.id,
+    serviceRef: 'ECG',
+    eventDate: '2026-09-25',
+    competency: '2026-09',
+    statusSource: 'ATENDIDO' as const,
+    responsibleUserId: 'PROF-USER-001',
+    evidenceRef: 'EVID-TEST-007',
     quantity: null,
     unitValue: null,
     grossValue: null,
