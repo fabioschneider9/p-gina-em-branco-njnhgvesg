@@ -78,6 +78,26 @@ export type CentralEmission = {
   created: string
 }
 
+/**
+ * Serialização canônica (chaves ordenadas recursivamente): a comparação de
+ * conteúdo não pode depender da ordem de propriedades após o round-trip do
+ * envelope pelo campo json do banco (RN-2-002 exige conteúdo, não formato).
+ */
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize)
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )
+    return Object.fromEntries(entries.map(([k, v]) => [k, canonicalize(v)]))
+  }
+  return value
+}
+
+function sameEnvelope(a: ProductionEnvelopeV1, b: ProductionEnvelopeV1): boolean {
+  return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b))
+}
+
 /** Resultado da importação de um lote (RN-2-002/RN-2-003). */
 export type ImportResult =
   | { outcome: 'CONFIRMADO'; lot: CentralLot; emissions: CentralEmission[] }
@@ -174,7 +194,7 @@ export async function importLot(input: {
         existingEmissions.length === envelopes.length &&
         envelopes.every((env) => {
           const match = existingEmissions.find((em) => em.idempotency_key === env.idempotency_key)
-          return match !== undefined && JSON.stringify(match.envelope) === JSON.stringify(env)
+          return match !== undefined && sameEnvelope(match.envelope, env)
         })
       if (sameContent) {
         return { outcome: 'DUPLICADO', lot: existingLot, emissions: existingEmissions }
