@@ -52,6 +52,15 @@ import {
   getPriceAt,
   isServiceOffered,
 } from '@/lib/service-catalog'
+import {
+  importLot,
+  listConfirmedLots,
+  listEmissionsByLot,
+  type CentralEmission,
+  type CentralLot,
+  type ImportResult,
+} from '@/lib/central-store'
+import { issueEnvelope as issueEnvelopeBase } from '@/lib/operational-record'
 
 const Index = () => {
   const [selectedUserId, setSelectedUserId] = useState(rlsFixture.users[0].id)
@@ -254,6 +263,101 @@ const Index = () => {
     resetIssuedEnvelopes()
     setT011Log([])
     setT011Count(0)
+  }
+
+  // F2-T002 — persistência durável do ciclo na central (PocketBase).
+  const [f2Busy, setF2Busy] = useState(false)
+  const [f2Result, setF2Result] = useState<ImportResult | null>(null)
+  const [f2Lots, setF2Lots] = useState<CentralLot[]>([])
+  const [f2Emissions, setF2Emissions] = useState<CentralEmission[]>([])
+  const [f2Error, setF2Error] = useState<string | null>(null)
+  const [f2EmitLog, setF2EmitLog] = useState<Array<{ label: string; outcome: string }>>([])
+
+  const f2Refresh = async () => {
+    try {
+      const lots = await listConfirmedLots()
+      setF2Lots(lots)
+      if (lots.length > 0) {
+        const ems = await listEmissionsByLot(lots[0].id)
+        setF2Emissions(ems)
+      } else {
+        setF2Emissions([])
+      }
+      setF2Error(null)
+    } catch (err) {
+      setF2Error(err instanceof Error ? err.message : 'Falha ao consultar a central')
+    }
+  }
+
+  const f2Import = async () => {
+    setF2Busy(true)
+    setF2Result(null)
+    setF2Error(null)
+    setF2EmitLog([])
+    try {
+      // Fonte sintética autorizada (F2-CONFIG-001 §6): fixture://fase-2.
+      const creation = createOperationalRecord(
+        {
+          ...recordFixtures.valid,
+          recordId: 'F2-VALID-001',
+          eventDate: '2026-10-10',
+          competency: '2026-10',
+          evidenceRef: 'fixture://fase-2/F2-VALID-001',
+        },
+        professionalUser,
+      )
+      if (!creation.record || creation.outcome !== 'VALIDO') {
+        setF2Error(`Fixture do ciclo não produziu registro válido: ${creation.outcome}`)
+        return
+      }
+      const issue = issueEnvelopeBase(creation.record)
+      if (issue.outcome === 'REJEITADO') {
+        setF2Error(`Envelope rejeitado na fronteira: ${issue.code} — ${issue.detail}`)
+        return
+      }
+      const envelope = issue.envelope
+      setF2EmitLog([{ label: envelope.idempotency_key, outcome: issue.outcome }])
+
+      const result = await importLot({
+        lotId: 'F2-LOT-2026-10-001',
+        sourceKind: 'PRODUCTION_API',
+        sourceRef: 'fixture://fase-2',
+        sourceVersion: 1,
+        sourceHash: '',
+        envelopes: [envelope],
+        actorId: professionalUser.id,
+      })
+      setF2Result(result)
+      await f2Refresh()
+    } catch (err) {
+      setF2Error(err instanceof Error ? err.message : 'Falha inesperada na importação')
+    } finally {
+      setF2Busy(false)
+    }
+  }
+
+  const f2Reimport = async () => {
+    // Reimportação do MESMO lote: mesma chave, mesmo conteúdo → DUPLICADO (RN-2-002).
+    setF2Busy(true)
+    setF2Result(null)
+    setF2Error(null)
+    try {
+      const result = await importLot({
+        lotId: 'F2-LOT-2026-10-001',
+        sourceKind: 'PRODUCTION_API',
+        sourceRef: 'fixture://fase-2',
+        sourceVersion: 1,
+        sourceHash: '',
+        envelopes: f2Emissions.map((e) => e.envelope),
+        actorId: professionalUser.id,
+      })
+      setF2Result(result)
+      await f2Refresh()
+    } catch (err) {
+      setF2Error(err instanceof Error ? err.message : 'Falha inesperada na reimportação')
+    } finally {
+      setF2Busy(false)
+    }
   }
 
   const denialResults = denialScenarios.map((scenario) => {
@@ -1322,6 +1426,158 @@ const Index = () => {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-teal-50 p-2 text-[#187b8c]">
+              <ArrowLeftRight size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#123b66]">F2-T002 · Ciclo persistido na central</h3>
+              <p className="text-sm text-slate-500">
+                Lote sintético fixture://fase-2 gravado no PocketBase — consultável após reiniciar a
+                página; reimportação devolve DUPLICADO sem nova emissão.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={f2Import}
+              disabled={f2Busy}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#187b8c] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#10697a] disabled:opacity-50"
+            >
+              <FilePlus2 size={14} aria-hidden="true" /> Importar ciclo (fixture://fase-2)
+            </button>
+            <button
+              type="button"
+              onClick={f2Reimport}
+              disabled={f2Busy || f2Emissions.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+            >
+              <History size={14} aria-hidden="true" /> Reimportar mesmo lote
+            </button>
+            <button
+              type="button"
+              onClick={f2Refresh}
+              disabled={f2Busy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+            >
+              <ShieldCheck size={14} aria-hidden="true" /> Atualizar consulta
+            </button>
+          </div>
+
+          {f2Error && (
+            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              {f2Error}
+            </div>
+          )}
+
+          {f2Result && (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+              <span className="font-semibold text-slate-700">Resultado: </span>
+              {f2Result.outcome === 'CONFIRMADO' && (
+                <span className="font-bold text-emerald-700">
+                  CONFIRMADO — lote {f2Result.lot.lot_id} com {f2Result.emissions.length}{' '}
+                  emissão(ões) persistida(s)
+                </span>
+              )}
+              {f2Result.outcome === 'DUPLICADO' && (
+                <span className="font-bold text-amber-700">
+                  DUPLICADO — mesma chave, mesmo conteúdo; emissão existente devolvida sem nova
+                  saída (RN-2-002)
+                </span>
+              )}
+              {f2Result.outcome === 'REJEITADO' && (
+                <span className="font-bold text-rose-700">
+                  REJEITADO ({f2Result.code}) — {f2Result.detail}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Lote confirmado</th>
+                  <th className="px-4 py-3">Origem / versão</th>
+                  <th className="px-4 py-3">Competência</th>
+                  <th className="px-4 py-3">Itens</th>
+                  <th className="px-4 py-3">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {f2Lots.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-3 text-sm text-slate-500" colSpan={5}>
+                      Nenhum lote confirmado na central ainda. Importe o ciclo ou atualize a
+                      consulta.
+                    </td>
+                  </tr>
+                ) : (
+                  f2Lots.map((lot) => (
+                    <tr key={lot.id}>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                        {lot.lot_id}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {lot.source_kind} · {lot.source_ref} · v{lot.source_version}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {lot.competency}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{lot.item_count}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          <CheckCircle2 size={13} aria-hidden="true" /> {lot.state}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {f2Emissions.length > 0 && (
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Emissão (idempotency_key)</th>
+                    <th className="px-4 py-3">record_id · versão</th>
+                    <th className="px-4 py-3">Nulos preservados</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {f2Emissions.map((em) => (
+                    <tr key={em.id}>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                        {em.idempotency_key}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {em.record_id} · v{em.source_version}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        qty={JSON.stringify(em.envelope.quantity)} · unit=
+                        {JSON.stringify(em.envelope.unit_value)} · gross=
+                        {JSON.stringify(em.envelope.gross_value)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-slate-500">
+            Barreira de lote: só lote CONFIRMADO aparece na consulta — staging nunca é exposto
+            (RN-2-004). Após reiniciar a página, use &quot;Atualizar consulta&quot;: o ciclo
+            continua consultável com as mesmas chaves (CA-2-002).
+          </p>
         </section>
 
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-5 text-sm text-slate-500">

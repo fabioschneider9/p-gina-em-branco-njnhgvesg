@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T18:14:40.849Z",
+  "generatedAt": "2026-10-15T19:21:49.010Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,255 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "f2_lots",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (state = 'CONFIRMADO' || state = 'REVERTIDO')",
+        "view": "@request.auth.id != '' && (state = 'CONFIRMADO' || state = 'REVERTIDO')",
+        "create": "@request.auth.id != ''",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "lot_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "state",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "STAGING",
+            "CONFIRMADO",
+            "REVERTIDO"
+          ]
+        },
+        {
+          "name": "source_kind",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "PRODUCTION_API",
+            "PDF_FALLBACK"
+          ]
+        },
+        {
+          "name": "source_ref",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "source_version",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "source_hash",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "entity_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unit_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "professional_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "competency",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "evidence_ref",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "contract_version",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "item_count",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "actor_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_f2_lots_lot_id ON f2_lots (lot_id)",
+        "CREATE INDEX idx_f2_lots_competency ON f2_lots (competency)"
+      ]
+    },
+    {
+      "name": "f2_idempotency",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "idempotency_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "lot_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "contract_version",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "envelope",
+          "type": "json",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "record_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "source_version",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "entity_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unit_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "professional_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "competency",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "actor_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_f2_idem_key ON f2_idempotency (idempotency_key)",
+        "CREATE INDEX idx_f2_idem_lot ON f2_idempotency (lot_id)"
       ]
     }
   ]
