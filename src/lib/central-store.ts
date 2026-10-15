@@ -188,8 +188,10 @@ export async function importLot(input: {
     })
     if (existingByLot.length > 0) {
       // Lote já importado: comparar conteúdo das emissões.
+      // listEmissionsByLot filtra pelo campo lot_id (string do negócio),
+      // não pelo id do registro PocketBase.
       const existingLot = existingByLot[0] as unknown as CentralLot
-      const existingEmissions = await listEmissionsByLot(existingLot.id)
+      const existingEmissions = await listEmissionsByLot(existingLot.lot_id)
       const sameContent =
         existingEmissions.length === envelopes.length &&
         envelopes.every((env) => {
