@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T19:21:49.010Z",
+  "generatedAt": "2026-10-15T19:24:23.325Z",
   "collections": [
     {
       "name": "users",
@@ -56,8 +56,8 @@
         "list": "@request.auth.id != '' && (state = 'CONFIRMADO' || state = 'REVERTIDO')",
         "view": "@request.auth.id != '' && (state = 'CONFIRMADO' || state = 'REVERTIDO')",
         "create": "@request.auth.id != ''",
-        "update": "",
-        "delete": ""
+        "update": "@request.auth.id != '' && state = 'STAGING' && @request.body.state = 'CONFIRMADO' && @request.body.lot_id:changed = false && @request.body.source_kind:changed = false && @request.body.source_ref:changed = false && @request.body.source_version:changed = false && @request.body.source_hash:changed = false && @request.body.entity_id:changed = false && @request.body.unit_id:changed = false && @request.body.professional_id:changed = false && @request.body.competency:changed = false && @request.body.evidence_ref:changed = false && @request.body.contract_version:changed = false && @request.body.item_count:changed = false && @request.body.actor_id:changed = false",
+        "delete": null
       },
       "fields": [
         {
@@ -185,8 +185,8 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
-        "update": "",
-        "delete": ""
+        "update": null,
+        "delete": null
       },
       "fields": [
         {

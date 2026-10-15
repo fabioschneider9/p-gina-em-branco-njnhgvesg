@@ -17,6 +17,23 @@ import pb from './pocketbase/client'
 import { getErrorMessage } from './pocketbase/errors'
 import type { ProductionEnvelopeV1 } from './operational-record'
 
+/**
+ * Autenticação da sessão com o usuário sintético de demonstração
+ * (migração 0003). Idempotente: chamadas repetidas reutilizam a sessão.
+ */
+let authPromise: Promise<void> | null = null
+export function ensureDemoAuth(): Promise<void> {
+  if (!authPromise) {
+    authPromise = (async () => {
+      if (pb.authStore.isValid) return
+      await pb
+        .collection('users')
+        .authWithPassword('demo-f2@fixture.qualivida.com.br', 'F2-demo-fixture-001')
+    })()
+  }
+  return authPromise
+}
+
 /** Estado do lote na central (SPEC-2-001, fluxo item 5). */
 export type LotState = 'STAGING' | 'CONFIRMADO' | 'REVERTIDO'
 
@@ -73,6 +90,7 @@ export type ImportResult =
 
 /** Consulta da central — somente lotes confirmados (barreira de leitura). */
 export async function listConfirmedLots(): Promise<CentralLot[]> {
+  await ensureDemoAuth()
   const records = await pb.collection('f2_lots').getFullList({
     filter: "state = 'CONFIRMADO' || state = 'REVERTIDO'",
     sort: '-created',
@@ -82,6 +100,7 @@ export async function listConfirmedLots(): Promise<CentralLot[]> {
 
 /** Consulta as emissões de um lote confirmado (envelope íntegro, nulls preservados). */
 export async function listEmissionsByLot(lotId: string): Promise<CentralEmission[]> {
+  await ensureDemoAuth()
   const records = await pb.collection('f2_idempotency').getFullList({
     filter: `lot_id = "${lotId}"`,
     sort: 'created',
@@ -140,6 +159,7 @@ export async function importLot(input: {
   const competency = identity.competency
   const evidenceRef = identity.source.evidence_ref
 
+  await ensureDemoAuth()
   try {
     // 1) Idempotência consultada ANTES de gravar: mesma chave já existente?
     //    (a unicidade real é garantida pelo índice único no servidor).
