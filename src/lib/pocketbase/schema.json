@@ -29,19 +29,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
@@ -71,21 +66,14 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": [
-            "STAGING",
-            "CONFIRMADO",
-            "REVERTIDO"
-          ]
+          "selectValues": ["STAGING", "CONFIRMADO", "REVERTIDO"]
         },
         {
           "name": "source_kind",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": [
-            "PRODUCTION_API",
-            "PDF_FALLBACK"
-          ]
+          "selectValues": ["PRODUCTION_API", "PDF_FALLBACK"]
         },
         {
           "name": "source_ref",
@@ -158,19 +146,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
@@ -260,19 +243,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [

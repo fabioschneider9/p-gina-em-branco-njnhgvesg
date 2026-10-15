@@ -278,7 +278,8 @@ const Index = () => {
       const lots = await listConfirmedLots()
       setF2Lots(lots)
       if (lots.length > 0) {
-        const ems = await listEmissionsByLot(lots[0].id)
+        // listEmissionsByLot filtra pelo campo lot_id (string), não pelo id do registro.
+        const ems = await listEmissionsByLot(lots[0].lot_id)
         setF2Emissions(ems)
       } else {
         setF2Emissions([])
@@ -338,17 +339,38 @@ const Index = () => {
 
   const f2Reimport = async () => {
     // Reimportação do MESMO lote: mesma chave, mesmo conteúdo → DUPLICADO (RN-2-002).
+    // O envelope é reconstruído da fixture (mesma entrada → mesmo envelope
+    // determinístico, mesma chave) — fiel ao cenário de reimportação da SPEC.
     setF2Busy(true)
     setF2Result(null)
     setF2Error(null)
     try {
+      const creation = createOperationalRecord(
+        {
+          ...recordFixtures.valid,
+          recordId: 'F2-VALID-001',
+          eventDate: '2026-10-10',
+          competency: '2026-10',
+          evidenceRef: 'fixture://fase-2/F2-VALID-001',
+        },
+        professionalUser,
+      )
+      if (!creation.record || creation.outcome !== 'VALIDO') {
+        setF2Error(`Fixture do ciclo não produziu registro válido: ${creation.outcome}`)
+        return
+      }
+      const issue = issueEnvelopeBase(creation.record)
+      if (issue.outcome === 'REJEITADO') {
+        setF2Error(`Envelope rejeitado na fronteira: ${issue.code} — ${issue.detail}`)
+        return
+      }
       const result = await importLot({
         lotId: 'F2-LOT-2026-10-001',
         sourceKind: 'PRODUCTION_API',
         sourceRef: 'fixture://fase-2',
         sourceVersion: 1,
         sourceHash: '',
-        envelopes: f2Emissions.map((e) => e.envelope),
+        envelopes: [issue.envelope],
         actorId: professionalUser.id,
       })
       setF2Result(result)
