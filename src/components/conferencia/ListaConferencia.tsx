@@ -59,7 +59,11 @@ export function ListaConferencia({ linhas, onVerDetalhes }: Props) {
                   <SituacaoBadge situacao={l.situacao} />
                 </td>
                 <td className="py-3">
-                  <Button variant="outline" size="sm" onClick={() => onVerDetalhes(l)}>
+                  <Button
+                    size="sm"
+                    className="bg-teal-700 hover:bg-teal-800"
+                    onClick={() => onVerDetalhes(l)}
+                  >
                     Ver detalhes
                   </Button>
                 </td>
@@ -95,9 +99,8 @@ export function ListaConferencia({ linhas, onVerDetalhes }: Props) {
               </dd>
             </dl>
             <Button
-              variant="outline"
               size="sm"
-              className="mt-3 w-full"
+              className="mt-3 w-full bg-teal-700 hover:bg-teal-800"
               onClick={() => onVerDetalhes(l)}
             >
               Ver detalhes
