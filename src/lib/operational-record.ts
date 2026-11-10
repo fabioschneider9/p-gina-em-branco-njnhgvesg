@@ -493,7 +493,7 @@ export function issueEnvelope(record: OperationalRecord): EnvelopeIssue {
     return {
       outcome: 'REJEITADO',
       code: 'NAO_ELEGIVEL',
-      detail: built.detail,
+      detail: (built as { detail: string }).detail,
       recordId: record.recordId,
     }
   }

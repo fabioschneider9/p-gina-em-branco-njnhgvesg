@@ -208,7 +208,7 @@ const Index = () => {
     }
     const result = buildProductionEnvelope(creation.record)
     if (!result.ok) {
-      setT010Feedback(`Envelope não gerado: ${result.detail}`)
+      setT010Feedback(`Envelope não gerado: ${(result as { detail: string }).detail}`)
       return
     }
     if (asSecond) {
@@ -633,7 +633,7 @@ const Index = () => {
                 <EyeOff size={13} aria-hidden="true" /> REJEITADO — não persistido (
                 {clinicalValidation.valid
                   ? 'erro inesperado'
-                  : clinicalValidation.detected.join(', ')}
+                  : (clinicalValidation as { detected: string[] }).detected.join(', ')}
                 )
               </p>
             </div>
@@ -1086,7 +1086,9 @@ const Index = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => runT007(f1t007Fixtures.edgeClinical)}
+                  onClick={() =>
+                    runT007(f1t007Fixtures.edgeClinical as unknown as typeof f1t007Fixtures.invalid)
+                  }
                   className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-[#187b8c]"
                 >
                   F1-EDGE-003 (clínico)
